@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import './globals.css';
 
 export const metadata = {
@@ -11,10 +12,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-pastel-cream">
         <nav className="bg-pastel-pink p-4 shadow-md">
           <div className="flex justify-between items-center px-10">
-            <a href="/" className="text-2xl font-bold">Pastel Cat</a>
+            <Link href="/" className="text-2xl font-bold">Pastel Cat</Link>
             <div className="space-x-6">
-              <a href="/" className="hover: transition">Inicio</a>
-              <a href="/login" className="hover: transition">Iniciar Sesión</a>
+              <Link href="/" className="hover: transition">Inicio</Link>
+              <Link href="/login" className="hover: transition">Iniciar Sesión</Link>
             </div>
           </div>
         </nav>

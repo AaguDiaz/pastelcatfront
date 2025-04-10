@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Login() {
   return (
     <div className="min-h-screen flex items-start bg-pastel-cream justify-center pt-16 ">
@@ -30,7 +32,7 @@ export default function Login() {
             </button>
           </form>
           <p className="mt-2 text-sm text-center ">
-            ¿No tienes cuenta? <a href="#" className="text-blue-500 hover:underline">Regístrate</a>
+            ¿No tienes cuenta? <Link href="#" className="text-blue-500 hover:underline">Regístrate</Link>
           </p>
         </div>
       
