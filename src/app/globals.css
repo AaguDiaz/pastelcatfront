@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --pastel-beige: #F5F5DC; /* Beige claro */
+    --pastel-cream: #fff8e9; /* Crema */
+    --pastel-blue: #6ab2fa;  /* Celeste suave */
+    --pastel-pink: #fcc0ce;  /* Rosa pastel */
+    --pastel-brown: #7B3F00; /* Marrón claro */
+  }
+}
+
+@layer utilities {
+  .bg-pastel-beige {
+    background-color: var(--pastel-beige);
+  }
+  .bg-pastel-cream {
+    background-color: var(--pastel-cream);
+  }
+  .bg-pastel-blue {
+    background-color: var(--pastel-blue);
+  }
+  .bg-pastel-pink {
+    background-color: var(--pastel-pink);
+  }
+  .bg-pastel-brown {
+    background-color: var(--pastel-brown);
+  }
+  .border-pastel-beige {
+    border-color: var(--pastel-beige);
+  }
+  .border-pastel-cream {
+    border-color: var(--pastel-cream);
+  }
+  .border-pastel-blue {
+    border-color: var(--pastel-blue);
+  }
+  .border-pastel-pink {
+    border-color: var(--pastel-pink);
+  }
+  .border-pastel-brown {
+    border-color: var(--pastel-brown);
+  }
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
