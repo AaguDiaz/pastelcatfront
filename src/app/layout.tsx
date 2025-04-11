@@ -20,17 +20,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     checkAuth();
 
-    const handleStorageChange = () => {
-      checkAuth();
-    };
+    const handleStorageChange = () => checkAuth();
     window.addEventListener("storage", handleStorageChange);
-
     const interval = setInterval(checkAuth, 1000);
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       clearInterval(interval);
     }
-  }, [router]);
+  }, [router, checkAuth]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
