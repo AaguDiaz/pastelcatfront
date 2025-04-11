@@ -31,9 +31,13 @@ export default function Login() {
       }
       localStorage.setItem("token", data.session.access_token);
       router.push("/dashboard");
-    }catch (err: any){
-      setError(err.message);
-    }finally{
+    } catch (err: unknown){
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred");
+      }
+    } finally{
       setLoading(false);
     }
   };
