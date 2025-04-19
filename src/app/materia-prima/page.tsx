@@ -7,70 +7,160 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, Pencil, Plus } from 'lucide-react'
+import { i, tr } from 'framer-motion/client';
 
-const mockData = [
-  { id: 1, nombre: 'Harina', unidad: 'kg', cantidad: 25, precio: 1500 },
-  { id: 2, nombre: 'Azúcar', unidad: 'kg', cantidad: 10, precio: 800 },
-  { id: 3, nombre: 'Huevos', unidad: 'docena', cantidad: 5, precio: 1200 },
-  { id: 4, nombre: 'Leche', unidad: 'litro', cantidad: 15, precio: 1350 },
-  { id: 5, nombre: 'Manteca', unidad: 'kg', cantidad: 2, precio: 500 },
-  { id: 6, nombre: 'Chocolate', unidad: 'kg', cantidad: 3, precio: 3000 },
-  { id: 7, nombre: 'Frutillas', unidad: 'kg', cantidad: 1, precio: 1800 },
-  { id: 8, nombre: 'Crema', unidad: 'litro', cantidad: 5, precio: 950 },
-  { id: 9, nombre: 'Vainilla', unidad: 'ml', cantidad: 100, precio: 300 },
-  { id: 10, nombre: 'Colorantes', unidad: 'ml', cantidad: 50, precio: 100 },
-  { id: 11, nombre: 'Nueces', unidad: 'kg', cantidad: 2, precio: 2200 },
-]
+interface MateriaPrima {
+  id: number;
+  nombre: string;
+  unidad: string;
+  cantidad: number;
+  precio: number;
+}
 
 export default function MateriasPrimas() {
-  const [data, setData] = useState(mockData)
-  const [nombre, setNombre] = useState('')
-  const [unidad, setUnidad] = useState('')
-  const [cantidad, setCantidad] = useState('')
-  const [precio, setPrecio] = useState('')
-  const [search, setSearch] = useState('')
-  const [pagina, setPagina] = useState(1)
-  const [modalEliminar, setModalEliminar] = useState(false)
-  const [idEliminar, setIdEliminar] = useState<number | null>(null)
+  const router = useRouter();
+  const [data, setData] = useState<MateriaPrima[]>([]);
+  const [nombre, setNombre] = useState('');
+  const [unidad, setUnidad] = useState('');
+  const [cantidad, setCantidad] = useState('');
+  const [precio, setPrecio] = useState('');
+  const [search, setSearch] = useState('');
+  const [pagina, setPagina] = useState(1);
+  const [totalPaginas, setTotalPaginas] = useState(1);
+  const [modalEliminar, setModalEliminar] = useState(false);
+  const [idEliminar, setIdEliminar] = useState<number | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
 
-  const agregarFila = () => {
-    const nuevaFila = {
-      id: Date.now(),
-      nombre,
-      unidad,
-      cantidad: parseFloat(cantidad),
-      precio: parseFloat(precio),
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }else{
+      fetchMaterials();
     }
-    setData(prev => [nuevaFila, ...prev])
-    setNombre('')
-    setUnidad('')
-    setCantidad('')
-    setPrecio('')
+  }, [router, pagina, search]);
+
+  const fetchMaterials = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`https://pastelcatback.vercel.app/api/materias-primas?page=${pagina}&search=${encodeURIComponent(search)}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log('Response status:', res.status, 'OK:', res.ok);
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('token');
+          router.push('/login');
+          return;
+        }
+        throw new Error('Error al obtener materias primas');
+    }
+    const{data: backendData, totalPages} = await res.json();
+    setData(backendData.map((item: any) => ({
+      id: item.id_materiaprima,
+      nombre: item.nombre,
+      unidad: item.unidadmedida,
+      cantidad: item.cantidad,
+      precio: item.preciototal,
+    })));
+    setTotalPaginas(totalPages);
+  }catch (error) {
+      console.error(error);
+    }
+}
+
+  const agregarFila = async () => {
+    try{
+      const token = localStorage.getItem('token');
+      const newMaterial={
+        nombre: nombre,
+        unidadmedida: unidad,
+        cantidad: parseFloat(cantidad),
+        preciototal: parseFloat(precio),
+      };
+      const method = isEditing ? 'PUT' : 'POST';
+      const url = isEditing ? `https://pastelcatback.vercel.app/api/materias-primas/${editId}` : 'https://pastelcatback.vercel.app/api/materias-primas';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newMaterial),
+      });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('token');
+          router.push('/login');
+          return;
+        }
+        throw new Error(isEditing ? 'Error al editar' : 'Error al agregar');
+      }
+      setNombre('');
+      setUnidad('');
+      setCantidad('');
+      setPrecio('');
+      setIsEditing(false);
+      setEditId(null);
+      fetchMaterials();
+    }catch (error) {
+      console.error(error);
+    };
   }
 
-  const eliminar = () => {
-    setData(data.filter(d => d.id !== idEliminar))
-    setModalEliminar(false)
+  const editarFila = (row: MateriaPrima) => {
+    setNombre(row.nombre);
+    setUnidad(row.unidad);
+    setCantidad(row.cantidad.toString());
+    setPrecio(row.precio.toString());
+    setIsEditing(true);
+    setEditId(row.id);
   }
 
-  const filtrado = data.filter(item =>
-    item.nombre.toLowerCase().includes(search.toLowerCase())
-  )
-  const totalPaginas = Math.ceil(filtrado.length / 10)
-  const datosPaginados = filtrado.slice((pagina - 1) * 10, pagina * 10)
+  const eliminar = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`https://pastelcatback.vercel.app/api/materias-primas/${idEliminar}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('token');
+          router.push('/login');
+          return;
+        }
+        throw new Error('Error al eliminar');
+      }
+      setModalEliminar(false);
+      setIdEliminar(null);
+      fetchMaterials();
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-pastel-beige p-8">
       <div className="bg-pastel-cream shadow-2xl rounded-2xl p-6 mb-6">
-        <h2 className="text-2xl font-semibold mb-4">Agregar Materia Prima</h2>
+        <h2 className="text-2xl font-semibold mb-4">{isEditing ? 'Editar Materia Prima':'Agregar Materia Prima'}</h2>
         <div className="grid grid-cols-5 gap-4 mb-4">
-          <Input placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} />
-          <Input placeholder="Unidad" value={unidad} onChange={e => setUnidad(e.target.value)} />
-          <Input placeholder="Cantidad" type="number" value={cantidad} onChange={e => setCantidad(e.target.value)} />
-          <Input placeholder="Precio Total" type="number" value={precio} onChange={e => setPrecio(e.target.value)} />
-          <Button onClick={agregarFila} className="bg-pastel-blue hover:scale-105 transition-transform">Agregar</Button>
+          <Input placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+          <Input placeholder="Unidad" value={unidad} onChange={(e) => setUnidad(e.target.value)} />
+          <Input placeholder="Cantidad" type="number" value={cantidad} onChange={e => setCantidad(e.target.value)} step='0.01' />
+          <Input placeholder="Precio Total" type="number" value={precio} onChange={e => setPrecio(e.target.value)} step='0.01'/>
+          <Button onClick={agregarFila} className="bg-pastel-blue hover:scale-105 transition-transform">{isEditing ? 'Actualizar':'Agregar'}</Button>
         </div>
-        <Input placeholder="Buscar por nombre..." value={search} onChange={e => setSearch(e.target.value)} />
+        <Input placeholder="Buscar por nombre..." value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       <div className="bg-pastel-cream shadow-2xl rounded-2xl p-4">
@@ -86,7 +176,7 @@ export default function MateriasPrimas() {
           </thead>
           <tbody>
             <AnimatePresence>
-              {datosPaginados.map(row => (
+              {data.map(row => (
                 <motion.tr
                   key={row.id}
                   initial={{ opacity: 0, y: 10 }}
@@ -97,10 +187,10 @@ export default function MateriasPrimas() {
                 >
                   <td className="py-2">{row.nombre}</td>
                   <td>{row.unidad}</td>
-                  <td>{row.cantidad}</td>
-                  <td>${row.precio}</td>
+                  <td>{row.cantidad.toFixed(2)}</td>
+                  <td>${row.precio.toFixed(2)}</td>
                   <td className="flex gap-2">
-                    <Button className="bg-pastel-blue hover:scale-105 transition-transform">
+                    <Button onClick={()=> editarFila(row)} className="bg-pastel-blue hover:scale-105 transition-transform">
                       <Pencil size={16} />
                     </Button>
                     <Button onClick={() => { setIdEliminar(row.id); setModalEliminar(true) }} className="bg-pastel-red hover:scale-105 transition-transform">
@@ -130,7 +220,7 @@ export default function MateriasPrimas() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setModalEliminar(false)}>Cancelar</Button>
-            <Button className="bg-[#ff6961] hover:scale-105 transition-transform" onClick={eliminar}>Eliminar</Button>
+            <Button className="bg-pastel-red hover:scale-105 transition-transform" onClick={eliminar}>Eliminar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
