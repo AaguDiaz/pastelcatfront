@@ -7,7 +7,7 @@
     --pastel-blue: #6ab2fa;  /* Celeste suave */
     --pastel-pink: #fcc0ce;  /* Rosa pastel */
     --pastel-brown: #7B3F00; /* Marrón claro */
-    --pastel-red : #FF0000; /* Rojo */
+    --pastel-red: #ff6961; /* Rojo */
   }
 }
 
@@ -27,20 +27,8 @@
   .bg-pastel-brown {
     background-color: var(--pastel-brown);
   }
-  .border-pastel-beige {
-    border-color: var(--pastel-beige);
-  }
-  .border-pastel-cream {
-    border-color: var(--pastel-cream);
-  }
-  .border-pastel-blue {
-    border-color: var(--pastel-blue);
-  }
-  .border-pastel-pink {
-    border-color: var(--pastel-pink);
-  }
-  .border-pastel-brown {
-    border-color: var(--pastel-brown);
+  .bg-pastel-red {
+    background-color: var(--pastel-red);
   }
 }
 
