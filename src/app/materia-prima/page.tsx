@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trash2, Pencil, Plus } from 'lucide-react'
-import { i, tr } from 'framer-motion/client';
+import { Trash2, Pencil} from 'lucide-react'
 
 interface MateriaPrima {
   id: number;
@@ -32,16 +31,6 @@ export default function MateriasPrimas() {
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }else{
-      fetchMaterials();
-    }
-  }, [router, pagina, search]);
-
   const fetchMaterials = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -61,7 +50,7 @@ export default function MateriasPrimas() {
         throw new Error('Error al obtener materias primas');
     }
     const{data: backendData, totalPages} = await res.json();
-    setData(backendData.map((item: any) => ({
+    setData(backendData.map((item: { id_materiaprima: number; nombre: string; unidadmedida: string; cantidad: number; preciototal: number }) => ({
       id: item.id_materiaprima,
       nombre: item.nombre,
       unidad: item.unidadmedida,
@@ -73,6 +62,16 @@ export default function MateriasPrimas() {
       console.error(error);
     }
 }
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }else{
+      fetchMaterials();
+    }
+  }, [router, pagina, search, fetchMaterials]);
 
   const agregarFila = async () => {
     try{
