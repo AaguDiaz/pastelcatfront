@@ -34,7 +34,7 @@ export default function MateriasPrimas() {
   const fetchMaterials = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://pastelcatback.vercel.app/api/materias-primas?page=${pagina}&search=${encodeURIComponent(search)}`, {
+      const res = await fetch(`https://pastelcatback.onrender.com/api/materias-primas?page=${pagina}&search=${encodeURIComponent(search)}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -83,7 +83,7 @@ export default function MateriasPrimas() {
         preciototal: parseFloat(precio),
       };
       const method = isEditing ? 'PUT' : 'POST';
-      const url = isEditing ? `https://pastelcatback.vercel.app/api/materias-primas/${editId}` : 'https://pastelcatback.vercel.app/api/materias-primas';
+      const url = isEditing ? `https://pastelcatback.onrender.com/api/materias-primas/${editId}` : 'https://pastelcatback.onrender.com/api/materias-primas';
 
       const res = await fetch(url, {
         method,
@@ -125,7 +125,7 @@ export default function MateriasPrimas() {
   const eliminar = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://pastelcatback.vercel.app/api/materias-primas/${idEliminar}`, {
+      const res = await fetch(`https://pastelcatback.onrender.com/api/materias-primas/${idEliminar}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
