@@ -17,7 +17,7 @@ export default function Login() {
     setError("");
 
     try{
-      const res = await fetch('https://pastelcatback.onrender.com/api/login', {
+      const res = await fetch('https://pastelcatback.onrender.com/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
