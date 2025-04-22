@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, Pencil, Plus, Bell, Calendar, LayoutDashboard, ShieldCheck, Users } from 'lucide-react';
+import { Bell, Calendar, LayoutDashboard, ShieldCheck, Users } from 'lucide-react';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
