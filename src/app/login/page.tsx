@@ -42,8 +42,8 @@ export default function Login() {
     }
   };
     return (
-      <div className="min-h-screen flex items-start bg-pastel-cream justify-center pt-16 ">
-          <div className="w-full max-w-md p-8 bg-pastel-beige shadow-2xl rounded-lg ">
+      <div className="min-h-screen flex items-start bg-pastel-beige justify-center pt-16 ">
+          <div className="w-full max-w-md p-8 bg-pastel-cream shadow-2xl rounded-lg ">
             <h2 className="text-2xl font-bold mb-6 text-center">Iniciar Sesión</h2>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
@@ -53,7 +53,7 @@ export default function Login() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-2 mt-1 border rounded focus:outline-none focus:ring-2 focus:ring-pastel-blue"
+                  className="w-full p-2 mt-1 border rounded focus:ring-1"
                   placeholder="tu@correo.com"
                   required
                 />
@@ -65,7 +65,7 @@ export default function Login() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-2 mt-1 border rounded focus:outline-none focus:ring-2 focus:ring-pastel-blue"
+                  className="w-full p-2 mt-1 border rounded focus:ring-1"
                   placeholder="••••••••"
                   required
                 />

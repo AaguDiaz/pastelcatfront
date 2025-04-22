@@ -5,11 +5,15 @@ import './globals.css';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Bell, Calendar, LayoutDashboard, ShieldCheck, Users } from 'lucide-react';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [openPasteleria, setOpenPasteleria] = useState(false);
+  const [openCatering, setOpenCatering] = useState(false);
 
   const checkAuth= () => {
     const token = localStorage.getItem("token");
@@ -51,13 +55,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Sidebar */}
         {isAuthenticated && (
           <aside
-            className={`fixed top-0 left-0 h-full w-64 bg-pastel-pink shadow-xl transform transition-transform duration-300 ease-in-out ${
+            className={`fixed top-0 left-0 h-full w-64 bg-pastel-cream shadow-xl transform transition-transform duration-300 ease-in-out ${
               isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
             } z-50`}
             style={{ display: isSidebarOpen ? 'block' : 'none' }}
           >
-            <div className="p-4">
-              <div className="flex justify-between items-center mb-4">
+            <div className="min-h-screen w-64">
+              <div className="bg-pastel-pink flex justify-between items-center p-4.5 mb-4 shadow-xl">
                 <h2 className="text-xl font-bold text-black">Menú</h2>
                 <button
                   onClick={closeSidebar}
@@ -80,28 +84,103 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   </svg>
                 </button>
               </div>
-              <nav>
-                <ul className="space-y-2">
-                  <li>
-                    <Link
-                      href="/materia-prima"
-                      className="block text-black hover:bg-pastel-blue hover:scale-105 transition-transform duration-200 p-2 rounded"
-                      onClick={closeSidebar}
+              <div className="p-4">
+                <button onClick={()=> setOpenPasteleria(!openPasteleria)} className='w-full text-left font-semibold hover:scale-105 transition-transform mb-2'> 🎂 Gestión Pastelería</button>
+                <AnimatePresence>
+                  {openPasteleria && (
+                    <motion.ul 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-1 pl-4 mb-4">
+                      <li>
+                        <Link
+                          href="/Pedidos"
+                          className="hover:underline cursor-pointer"
+                          onClick={closeSidebar}
+                        >
+                          📦 Pedidos
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                            href="/Tortas"
+                            className="hover:underline cursor-pointer"
+                            onClick={closeSidebar}
+                          >
+                            🍰 Tortas
+                          </Link>
+                        </li>
+                      <li>
+                        <Link
+                          href="/Bandejas"
+                          className="hover:underline cursor-pointer"
+                          onClick={closeSidebar}
+                        >
+                          🍱 Bandejas
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/Recetas"
+                          className="hover:underline cursor-pointer"
+                          onClick={closeSidebar}
+                        >
+                          📖 Recetas
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/materia-prima"
+                          className="hover:underline cursor-pointer"
+                          onClick={closeSidebar}
+                        >
+                          🥣 Materia Prima
+                        </Link>
+                      </li>
+                    </motion.ul>
+                  )}
+                </AnimatePresence>
+                <button onClick={() => setOpenCatering(!openCatering)} className="w-full text-left font-semibold hover:scale-105 transition-transform ">
+                  🍽️ Gestión Catering
+                </button>
+                <AnimatePresence>
+                  {openCatering && (
+                    <motion.ul
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="pl-4 mb-4 space-y-1"
                     >
-                      Materia Prima
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/events"
-                      className="block text-black hover:bg-pastel-blue hover:scale-105 transition-transform duration-200 p-2 rounded"
-                      onClick={closeSidebar}
-                    >
-                      Eventos
-                    </Link>
-                  </li>
-                </ul>
-              </nav>
+                      <li className="hover:underline cursor-pointer">🎉 Eventos</li>
+                      <li className="hover:underline cursor-pointer">🧂 Insumos</li>
+                    </motion.ul>
+                  )}
+                </AnimatePresence>
+
+                <div className="mt-4 space-y-2">
+                  <div className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
+                    <span>🔔 Notificaciones</span>
+                    <Bell size={16} />
+                  </div>
+                  <div className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
+                    <span>📅 Calendario</span>
+                    <Calendar size={16} />
+                  </div>
+                  <Link href="/dashboard" className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
+                    <span>📊 Dashboard</span>
+                    <LayoutDashboard size={16} />
+                  </Link>
+                  <div className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
+                    <span>🕵️ Auditoría</span>
+                    <ShieldCheck size={16} />
+                  </div>
+                  <div className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
+                    <span>👥 Usuarios</span>
+                    <Users size={16} />
+                  </div>
+                </div>
+              </div>
             </div>
           </aside>
         )}

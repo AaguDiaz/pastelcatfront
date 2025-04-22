@@ -2,10 +2,10 @@
 
 @layer base {
   :root {
-    --pastel-beige: #F5F5DC; /* Beige claro */
+    --pastel-beige: #f8f8e2; /* Beige claro */
     --pastel-cream: #fff8e9; /* Crema */
     --pastel-blue: #6ab2fa;  /* Celeste suave */
-    --pastel-pink: #fcc0ce;  /* Rosa pastel */
+    --pastel-pink: #f3ced6;  /* Rosa pastel */
     --pastel-brown: #7B3F00; /* Marrón claro */
     --pastel-red: #ff6961; /* Rojo */
   }

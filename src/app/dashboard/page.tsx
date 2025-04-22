@@ -15,8 +15,8 @@ export default function Dashboard() {
     , [router]);
 
     return (
-        <div className="min-h-screen flex items-center bg-pastel-cream justify-center ">
-            <div className="w-full max-w-md p-8 bg-pastel-beige shadow-2xl rounded-lg mb-20">
+        <div className="min-h-screen flex items-center bg-pastel-beige justify-center ">
+            <div className="w-full max-w-md p-8 bg-pastel-cream shadow-2xl rounded-lg mb-20">
                 <h2 className="text-2xl font-bold mb-6 text-center">Bienvenido a Dashboard</h2>
                 <p className="text-center">Aquí puedes ver tu información.</p>
             </div>
