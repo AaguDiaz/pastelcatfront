@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, ChangeEvent, FormEvent } from 'react'
 import { useRouter } from 'next/navigation';
 import { Torta, TortasApiResponse } from '../interfaces/tortas';
 
-const API_BASE_URL =  'http://localhost:5000';
+const API_BASE_URL =  'https://pastelcatback.onrender.com'; 
 
 export const useTortasData = (initialSearch = '') => {
   const [tortas, setTortas] = useState<Torta[]>([]);
