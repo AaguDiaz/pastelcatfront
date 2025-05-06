@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, ChangeEvent, FormEvent } from 'react';
+import { useState, useEffect, useCallback} from 'react';
 import { useRouter } from 'next/navigation';
 import { Torta, TortasApiResponse } from '../interfaces/tortas';
 
@@ -51,7 +51,7 @@ export const useTortasData = (initialSearch = '') => {
         try {
           const errorData = await res.json();
           errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch (e) { /* No hacer nada si el cuerpo no es JSON */ }
+        } catch { /* No hacer nada si el cuerpo no es JSON */ }
         throw new Error(errorMessage);
       }
 
@@ -131,7 +131,7 @@ export const useTortasData = (initialSearch = '') => {
             try {
                 const errorData = await res.json();
                 errorMessage = errorData.message || errorData.error || errorMessage;
-            } catch (e) { /* No hacer nada si el cuerpo no es JSON */ }
+            } catch { /* No hacer nada si el cuerpo no es JSON */ }
         }
         throw new Error(errorMessage);
       }
@@ -169,7 +169,7 @@ export const useTortasData = (initialSearch = '') => {
           try {
             const errorData = await res.json();
             errorMessage = errorData.message || errorData.error || errorMessage;
-          } catch (e) {}
+          } catch {}
         }
         throw new Error(errorMessage);
       }
@@ -207,7 +207,7 @@ export const useTortasData = (initialSearch = '') => {
           try {
             const errorData = await res.json();
             errorMessage = errorData.message || errorData.error || errorMessage;
-          } catch (e) {}
+          } catch {}
         }
         throw new Error(errorMessage);
       }
