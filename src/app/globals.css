@@ -8,6 +8,7 @@
     --pastel-pink: #f3ced6;  /* Rosa pastel */
     --pastel-brown: #7B3F00; /* Marrón claro */
     --pastel-red: #ff6961; /* Rojo */
+    --pastel-yellow: #f9e79f; /* Amarillo suave */
   }
 }
 
@@ -29,6 +30,9 @@
   }
   .bg-pastel-red {
     background-color: var(--pastel-red);
+  }
+  .bg-pastel-yellow {
+    background-color: var(--pastel-yellow);
   }
 }
 
