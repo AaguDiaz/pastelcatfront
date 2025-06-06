@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback} from 'react';
 import { useRouter } from 'next/navigation';
 import { Torta, TortasApiResponse } from '../interfaces/tortas';
 
-const API_BASE_URL =  'https://pastelcatback.onrender.com'; // Cambia esto a tu URL de API real
+const API_BASE_URL = 'http://localhost:5000'; //'https://pastelcatback.onrender.com';
 
 export const useTortasData = (initialSearch = '') => {
   const [tortas, setTortas] = useState<Torta[]>([]);
@@ -37,8 +37,6 @@ export const useTortasData = (initialSearch = '') => {
           },
         }
       );
-
-      console.log(`Response status (Tortas - Page ${pageToFetch}):`, res.status, 'OK:', res.ok);
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           localStorage.removeItem('token');

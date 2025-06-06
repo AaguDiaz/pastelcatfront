@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, Pencil} from 'lucide-react'
+const API_BASE_URL = 'http://localhost:5000'; //'https://pastelcatback.onrender.com';
 
 interface MateriaPrima {
   id: number;
@@ -34,7 +35,7 @@ export default function MateriasPrimas() {
   const fetchMaterials = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://pastelcatback.onrender.com/materias-primas?page=${pagina}&search=${encodeURIComponent(search)}`, {
+      const res = await fetch(`${API_BASE_URL}/materias-primas?page=${pagina}&search=${encodeURIComponent(search)}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -83,7 +84,7 @@ export default function MateriasPrimas() {
         preciototal: parseFloat(precio),
       };
       const method = isEditing ? 'PUT' : 'POST';
-      const url = isEditing ? `https://pastelcatback.onrender.com/materias-primas/${editId}` : 'https://pastelcatback.onrender.com/materias-primas';
+      const url = isEditing ? `${API_BASE_URL}/materias-primas/${editId}` : `${API_BASE_URL}/materias-primas`;
 
       const res = await fetch(url, {
         method,
@@ -125,7 +126,7 @@ export default function MateriasPrimas() {
   const eliminar = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://pastelcatback.onrender.com/materias-primas/${idEliminar}`, {
+      const res = await fetch(`${API_BASE_URL}/materias-primas/${idEliminar}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
