@@ -21,7 +21,7 @@ const FormAgregarReceta = () => {
   }
   const [ingredientesAgregados, setIngredientesAgregados] = useState<IngredienteAgregado[]>([])
   const [modoEdicion, setModoEdicion] = useState(false)
-  const [idEditando, setIdEditando] = useState(null)
+  const [idEditando, setIdEditando] = useState<number | null>(null)
 
   const [tortas, setTortas] = useState<{ id: string; nombre: string }[]>([])
   const [ingredientes, setIngredientes] = useState<{ id: string; nombre: string }[]>([])
@@ -70,7 +70,7 @@ const FormAgregarReceta = () => {
     setUnidad('')
   }
 
-  const handleEditar = (item: { id: any; ingrediente: any; cantidad: any; unidad: any }) => {
+  const handleEditar = (item: IngredienteAgregado) => {
     setIngredienteSeleccionado(item.ingrediente)
     setCantidad(item.cantidad)
     setUnidad(item.unidad)
