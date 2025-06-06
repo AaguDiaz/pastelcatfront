@@ -25,8 +25,6 @@ export default function ComboboxTortas({ options, value, onSelect }: Props) {
           option.nombre.toLowerCase().includes(query.toLowerCase())
         )
 
-  const selectedItem = options.find((option) => option.nombre === value)
-
   return (
     <div className="w-full">
       <Combobox value={value} onChange={onSelect}>
@@ -63,7 +61,7 @@ export default function ComboboxTortas({ options, value, onSelect }: Props) {
                   }
                   value={option.nombre}
                 >
-                  {({ selected, active }) => (
+                  {({ selected}) => (
                     <>
                       <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
                         {option.nombre}
