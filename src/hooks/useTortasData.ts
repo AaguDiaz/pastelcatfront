@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback} from 'react';
 import { useRouter } from 'next/navigation';
 import { Torta, TortasApiResponse } from '../interfaces/tortas';
 
-const API_BASE_URL =  'https://pastelcatback.onrender.com'; 
+const API_BASE_URL =  'https://pastelcatback.onrender.com'; // Cambia esto a tu URL de API real
 
 export const useTortasData = (initialSearch = '') => {
   const [tortas, setTortas] = useState<Torta[]>([]);
