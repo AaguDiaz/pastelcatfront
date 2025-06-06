@@ -190,7 +190,7 @@ export default function TortasPage(): JSX.Element {
                     <h2 className="text-lg font-semibold text-gray-800 mb-1">{torta.nombre}</h2>
                     <p className="text-md font-bold text-green-600 mb-3">${Number(torta.precio).toFixed(2)}</p>
                     <p className="text-sm text-gray-500 mb-2">Tamaño: {torta.tamaño}</p>
-                    <div className="mt-auto pt-3 border-t border-gray-200 flex justify-center items-center space-x-2">
+                    <div className="mt-auto pt-3 border-t border-gray-200 flex flex-wrap justify-center items-center gap-2">
                       <Button className="bg-pastel-blue hover:bg-blue-200" variant="ghost" title="Editar" onClick={() => handleEditTorta(torta)}><Pencil className="h-4 w-4 " />Editar</Button>
                       <Button className="bg-pastel-red hover:bg-red-200" variant="ghost" title="Eliminar" onClick={()=>handleDeleteTorta(torta)}><Trash2 className="h-4 w-4" />Eliminar</Button>
                       <Button  className='bg-pastel-yellow hover:bg-yellow-100' variant="ghost" title="Ver Detalles" ><Info className="h-4 w-4" />Ver detalles</Button>

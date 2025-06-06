@@ -122,7 +122,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       </li>
                       <li>
                         <Link
-                          href="/Recetas"
+                          href="/recetas"
                           className="hover:underline cursor-pointer"
                           onClick={closeSidebar}
                         >
