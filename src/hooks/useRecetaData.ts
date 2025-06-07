@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { TortaSelect } from '@/interfaces/tortas';
 import { Ingrediente,Receta ,RecetaPayload } from '@/interfaces/recetas'; 
 
-const API_BASE_URL = 'http://localhost:5000'; 
+const API_BASE_URL ='https://pastelcatback.onrender.com' ; //'http://localhost:5000'
 
 type ModalState = {
   mostrar: boolean;

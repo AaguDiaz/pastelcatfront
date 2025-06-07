@@ -4,12 +4,16 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Eye, Pencil, Trash2 } from 'lucide-react'; // Íconos para las acciones
-import { useRecetaData } from '@/hooks/useRecetaData';
 import EliminarModal from '../modals/eliminar';
 import { Receta } from '@/interfaces/recetas';
 
-const FormTablaReceta = () => {
-  const { recetas, loading,seleccionarReceta,eliminarReceta } = useRecetaData();
+interface FormTablaRecetaProps {
+  recetas: Receta[];
+  seleccionarReceta: (id: number, mode: 'view' | 'edit') => void;
+  eliminarReceta: (id: number) => Promise<void>;
+}
+
+const FormTablaReceta = ({ recetas, seleccionarReceta, eliminarReceta }: FormTablaRecetaProps) => {
 
   const [filtroNombre, setFiltroNombre] = useState('');
   const [modalEliminar, setModalEliminar] = useState<{ isOpen: boolean; receta: Receta | null }>({ isOpen: false, receta: null });
@@ -44,47 +48,44 @@ const FormTablaReceta = () => {
   };
 
   return (
-    <div className="bg-pastel-cream text-black p-6 rounded-2xl shadow-2xl">
-      <h2 className="text-2xl font-semibold mb-4">Gestionar Recetas</h2>
+    <div className="bg-pastel-cream text-black p-6 rounded-2xl shadow-2xl"> 
+      <h2 className="text-2xl font-semibold mb-4">Gestionar Recetas</h2> 
+      
       {/* Input de Búsqueda */}
-      <div className="mb-4">
+      <div className="mb-4"> 
         <Input
           type="text"
           placeholder="Buscar por nombre y tamaño de torta..."
           value={filtroNombre}
           onChange={(e) => setFiltroNombre(e.target.value)}
           className="max-w-sm"
-        />
+        /> 
       </div>
 
-      {/* Contenedor de la tabla  */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left min-w-[600px]">
+      {/* Contenedor de la tabla */}
+      <div className="overflow-x-auto"> 
+        <table className="w-full text-left min-w-[600px]"> 
           <thead>
-            <tr className="border-b">
-              <th className="py-2">Nombre Torta</th>
-              <th className="py-2">Porciones</th>
-              <th className="py-2 text-left">Acciones</th>
+            <tr className="border-b"> 
+              <th className="py-2">Nombre Torta</th> 
+              <th className="py-2">Porciones</th> 
+              <th className="py-2 text-left">Acciones</th> 
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={3} className="text-center py-4">Cargando recetas...</td>
-              </tr>
-            ) : recetasFiltradas.length > 0 ? (
+            {recetasFiltradas.length > 0 ? (
               recetasFiltradas.map(receta => (
-                <tr key={receta.id_receta} className="border-t">
+                <tr key={receta.id_receta} className="border-t"> 
                   <td className="py-3 font-medium">{`${receta.torta.nombre} (${receta.torta.tamanio})`}</td>
-                  <td className="py-3">{receta.porciones}</td>
-                  <td className="py-3 flex justify-left items-center gap-2">
-                    <Button title="Editar" size="sm" className="bg-pastel-blue hover:bg-blue-400" onClick={() => handleEditar(receta.id_receta)}>
+                  <td className="py-3">{receta.porciones}</td> 
+                  <td className="py-3 flex justify-left items-center gap-2"> 
+                    <Button title="Editar" size="sm" className="bg-pastel-blue hover:bg-blue-400" onClick={() => handleEditar(receta.id_receta)}> 
                       <Pencil size={16} /> Editar
                     </Button>
-                    <Button title="Eliminar" size="sm" className="bg-pastel-red hover:bg-red-400" onClick={() => handleAbrirModalEliminar(receta)}>
+                    <Button title="Eliminar" size="sm" className="bg-pastel-red hover:bg-red-400" onClick={() => handleAbrirModalEliminar(receta)}> 
                       <Trash2 size={16} /> Eliminar
                     </Button>
-                    <Button title="Ver Detalles" size="sm" className="bg-pastel-yellow hover:bg-yellow-400" onClick={() => handleVerDetalles(receta.id_receta)}>
+                    <Button title="Ver Detalles" size="sm" className="bg-pastel-yellow hover:bg-yellow-400" onClick={() => handleVerDetalles(receta.id_receta)}> 
                       <Eye size={16} /> Ver Detalles
                     </Button>
                   </td>
@@ -92,7 +93,7 @@ const FormTablaReceta = () => {
               ))
             ) : (
               <tr>
-                <td colSpan={3} className="text-center py-4">No se encontraron recetas que coincidan con la búsqueda.</td>
+                <td colSpan={3} className="text-center py-4">No se encontraron recetas que coincidan con la búsqueda.</td> 
               </tr>
             )}
           </tbody>

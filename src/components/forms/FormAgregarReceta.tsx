@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import Combobox from '@/components/ui/combobox'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useRecetaData } from '@/hooks/useRecetaData'
+type FormAgregarRecetaProps = ReturnType<typeof useRecetaData>;
 import ModalExito from '@/components/modals/exito'
 import ModalError from '@/components/modals/error'
 
@@ -16,8 +17,8 @@ type IngredienteAgregado = {
   unidad: string;
 }
 
-const FormAgregarReceta = () => {
-  // Se importa toda la lógica y estados del hook centralizado
+const FormAgregarReceta = (props: FormAgregarRecetaProps) => {
+  // Desestructura todas las props que vienen del padre
   const {
     confirmarReceta,
     actualizarReceta,
@@ -27,13 +28,10 @@ const FormAgregarReceta = () => {
     setModalExito,
     tortas,
     ingredientes,
-    loading,
-    recetaSeleccionada, // Estado global para la receta seleccionada
-    modo,               // Estado global: 'view', 'edit' o null
-    limpiarSeleccion,   // Función para resetear el estado global
-  } = useRecetaData()
-
-  // Estados locales del formulario (restaurados a su forma original)
+    recetaSeleccionada, // Estado global que ahora viene por props
+    modo,               // Modo global que ahora viene por props
+    limpiarSeleccion,
+  } = props;
   const [tortaSeleccionada, setTortaSeleccionada] = useState<string>('');
   const [porciones, setPorciones] = useState('');
   const [ingredienteSeleccionado, setIngredienteSeleccionado] = useState('');
@@ -48,32 +46,37 @@ const FormAgregarReceta = () => {
 
   // EFECTO: Rellena el formulario cuando cambia la receta seleccionada desde el hook
   useEffect(() => {
-  console.log('useEffect ejecutado - recetaSeleccionada:', recetaSeleccionada, 'modo:', modo, 'tortas:', tortas);
-  if (recetaSeleccionada && (modo === 'view' || modo === 'edit')) {
-    const torta = tortas.find(t => t.id_torta === recetaSeleccionada.torta.id_torta);
-    console.log('Torta encontrada:', torta, 'id_torta buscado:', recetaSeleccionada.torta.id_torta);
-    setTortaSeleccionada(torta?.nombre || '');
-    setPorciones(String(recetaSeleccionada.porciones));
-    setIngredientesAgregados(
-      recetaSeleccionada.ingredientes.map(ing => {
-        const ingrediente = {
+    console.log(
+      'useEffect en FormAgregarReceta EJECUTADO:',
+      'recetaSeleccionada:', recetaSeleccionada,
+      'modo:', modo
+    );
+    if (recetaSeleccionada && (modo === 'view' || modo === 'edit')) { 
+      const torta = tortas.find(t => t.id_torta === recetaSeleccionada.torta.id_torta); 
+      setTortaSeleccionada(torta?.nombre || '');
+      setPorciones(String(recetaSeleccionada.porciones));
+      setIngredientesAgregados(
+        recetaSeleccionada.ingredientes.map(ing => ({
           id: ing.id_materiaprima,
           ingrediente: ing.nombre,
           cantidad: String(ing.cantidad),
           unidad: ing.unidadmedida,
-        };
-        console.log('Ingrediente mapeado:', ingrediente);
-        return ingrediente;
-      })
-    );
-  } else {
-    console.log('Limpiando formulario, no hay receta seleccionada o modo inválido');
-    handleLimpiar();
-  }
-}, [recetaSeleccionada, modo, tortas]);
-
-
-  // ---- LÓGICA ORIGINAL PARA MANEJAR INGREDIENTES (RESTAURADA) ----
+        }))
+      );
+    } else {
+      // Si no hay receta seleccionada, se limpian los campos locales
+      // handleLimpiar() ya no es necesario aquí porque limpiarSeleccion()
+      // no afecta los estados locales directamente.
+      setTortaSeleccionada('');
+      setPorciones('');
+      setIngredienteSeleccionado('');
+      setCantidad('');
+      setUnidad('');
+      setIngredientesAgregados([]);
+      setModoEdicion(false);
+      setIdEditando(null);
+    }
+  }, [recetaSeleccionada, modo, tortas]); // Las dependencias son correctas.
 
   const handleAgregarOEditarIngrediente = () => {
     if (!ingredienteSeleccionado || !cantidad || !unidad) return;
@@ -118,9 +121,6 @@ const FormAgregarReceta = () => {
   const handleEliminarIngrediente = (id: number) => {
     setIngredientesAgregados(prev => prev.filter(item => item.id !== id));
   };
-
-
-  // ---- FUNCIONES PRINCIPALES DEL FORMULARIO (MODIFICADAS PARA INTEGRACIÓN) ----
 
   const handleLimpiar = () => {
     // Resetea todos los estados locales del formulario
@@ -172,12 +172,6 @@ const FormAgregarReceta = () => {
     // Tras una operación exitosa, el hook se encarga de limpiar y recargar
   };
 
-
-  if (loading) {
-    return <div className="p-6 text-center">Cargando datos...</div>;
-  }
-
-  // ---- RENDERIZADO DEL COMPONENTE (ESTRUCTURA ORIGINAL RESTAURADA) ----
   return (
     <div className="bg-pastel-cream text-black p-6 rounded-2xl shadow-2xl">
       <h2 className="text-2xl font-semibold mb-4">
