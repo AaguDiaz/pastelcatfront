@@ -1,116 +1,207 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { TortaSelect } from '@/interfaces/tortas';
-import { Ingrediente, RecetaPayload } from '@/interfaces/recetas';
+import { Ingrediente,Receta ,RecetaPayload } from '@/interfaces/recetas'; 
 
-const API_BASE_URL = 'http://localhost:5000'; // o tu URL de producción
+const API_BASE_URL = 'http://localhost:5000'; 
 
 type ModalState = {
-    mostrar: boolean;
-    mensaje: string;
+  mostrar: boolean;
+  mensaje: string;
 };
 
 export const useRecetaData = () => {
+  // Estados de datos
   const [tortas, setTortas] = useState<TortaSelect[]>([]);
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>([]);
+  const [recetas, setRecetas] = useState<Receta[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalExito, setModalExito] = useState<ModalState>({
-    mostrar: false,
-    mensaje: '',
-  });
-  const [modalError, setModalError] = useState<ModalState>({
-    mostrar: false,
-    mensaje: '',
-  });
 
-  
-    useEffect(() => {
-        fetchRecetaData();
-    }, []);
+  // Estados de UI y formulario
+  const [recetaSeleccionada, setRecetaSeleccionada] = useState<Receta | null>(null);
+  const [modo, setModo] = useState<'view' | 'edit' | null>(null);
 
-  const fetchWithAuth = async (url: string): Promise<any> => {
+  // Estados de modales
+  const [modalExito, setModalExito] = useState<ModalState>({ mostrar: false, mensaje: '' }); 
+  const [modalError, setModalError] = useState<ModalState>({ mostrar: false, mensaje: '' });
+
+  // --- FUNCIÓN DE FETCH CON AUTENTICACIÓN ---
+  const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('token');
-
-    const res = await fetch(url, {
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!res.ok) {
-      if (res.status === 401 || res.status === 403) {
-        localStorage.removeItem('token');
-        window.location.href = '/login'; // o router.push si estás en un componente
-      }
-      const errorText = await res.text();
-      throw new Error(`Error ${res.status}: ${errorText}`);
-    }
-
-    return res.json();
-  };
-
-  const fetchRecetaData = async () => {
-    try {
-      const [dataTortas, dataIngredientes] = await Promise.all([
-        fetchWithAuth(`${API_BASE_URL}/receta/tortas`),
-        fetchWithAuth(`${API_BASE_URL}/receta/ingredientes`),
-      ]);
-
-      setTortas(
-              dataTortas.map((t: any) => ({
-                  id_torta: t.id_torta,
-                   nombre: `${t.nombre}${t.tamaño ? ' ' + t.tamaño : ''}`, // ← evita undefined
-              }))
-      );
-      setIngredientes(dataIngredientes.map((i: any) => ({
-        id_materiaprima: i.id_materiaprima,
-        nombre: i.nombre,
-      })));
-    } catch (error) {
-      console.error('Error al cargar datos de receta:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  const confirmarReceta = async (payload: RecetaPayload) => {
-    const token = localStorage.getItem('token');
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/receta`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        
-        body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-            localStorage.removeItem('token');
-            window.location.href = '/login';
-            return;
-        }
-
-        const errorText = await response.text();
-        throw new Error(`Error ${response.status}: ${errorText}`);
-        }
-
-        setModalExito({ mostrar: true, mensaje: 'Receta confirmada con éxito.' }); // mostrar modal de éxito
-    } catch (error: any) {
-        console.error('Error al confirmar receta:', error);
-        setModalError({ mostrar: true, mensaje: error.message });
-    }
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+      ...(token && { Authorization: `Bearer ${token}` }),
     };
 
+    const response = await fetch(url, { ...options, headers });
 
-  return { tortas,
+    if (response.status === 401 || response.status === 403) {
+      localStorage.removeItem('token');
+      window.location.href = '/login'; 
+      throw new Error('No autorizado');
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error ${response.status}: ${errorText}`);
+    }
+    
+    // Si la respuesta no tiene contenido (ej. en un DELETE), devolvemos un objeto vacío
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.indexOf("application/json") !== -1) {
+        return response.json();
+    }
+    return {};
+
+  }, []);
+
+  // --- CARGA INICIAL DE DATOS ---
+  const fetchInitialData = useCallback(async () => {
+  try {
+    setLoading(true);
+    const [dataTortas, dataIngredientes, dataRecetas] = await Promise.all([
+      fetchWithAuth(`${API_BASE_URL}/receta/tortas`),
+      fetchWithAuth(`${API_BASE_URL}/receta/ingredientes`),
+      fetchWithAuth(`${API_BASE_URL}/receta`),
+    ]);
+
+    setTortas(
+      dataTortas.map((t: any) => ({
+        id_torta: t.id_torta,
+        nombre: `${t.nombre}${t.tamanio ? ' ' + t.tamanio : ''}`,
+      }))
+    );
+
+    setIngredientes(
+      dataIngredientes.map((i: any) => ({
+        id_materiaprima: i.id_materiaprima,
+        nombre: i.nombre,
+      }))
+    );
+
+    // Transformar las recetas para incluir ingredientes
+    const recetasTransformadas = await Promise.all(
+      dataRecetas.map(async (receta: any) => {
+        const ingredientesReceta = await fetchWithAuth(`${API_BASE_URL}/receta/${receta.id_receta}/ingredientes`);
+        return {
+          id_receta: receta.id_receta,
+          torta: {
+            id_torta: receta.torta.id_torta,
+            nombre: receta.torta.nombre,
+            tamanio: receta.torta.tamanio,
+          },
+          porciones: receta.porciones,
+          ingredientes: ingredientesReceta.map((ing: any) => ({
+            id_materiaprima: ing.id,
+            nombre: ing.ingrediente,
+            cantidad: ing.cantidad,
+            unidadmedida: ing.unidad,
+          })),
+        };
+      })
+    );
+
+    setRecetas(recetasTransformadas);
+    console.log('Recetas transformadas:', recetasTransformadas);
+  } catch (error) {
+    console.error('Error al cargar datos iniciales:', error);
+    setModalError({ mostrar: true, mensaje: 'No se pudieron cargar los datos iniciales.' });
+  } finally {
+    setLoading(false);
+  }
+}, [fetchWithAuth]);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
+
+  // --- MANEJADORES DE ACCIONES DE LA TABLA ---
+  const seleccionarReceta = (id: number, mode: 'view' | 'edit') => {
+  console.log('Buscando receta con id:', id);
+  console.log('Estado recetas:', recetas);
+  const receta = recetas.find((r) => r.id_receta === id);
+  if (receta) {
+    console.log('Receta encontrada:', receta);
+    setRecetaSeleccionada({ ...receta }); // Crear una nueva referencia
+    setModo(mode);
+    console.log('Estado actualizado - recetaSeleccionada:', { ...receta }, 'modo:', mode);
+  } else {
+    console.error('Receta no encontrada para id:', id);
+    setModalError({ mostrar: true, mensaje: `No se encontró la receta con ID ${id}.` });
+  }
+};
+
+  const limpiarSeleccion = () => {
+    setRecetaSeleccionada(null);
+    setModo(null);
+  };
+  
+  // --- FUNCIONES CRUD ---
+
+  const confirmarReceta = async (payload: RecetaPayload) => {
+    try {
+      await fetchWithAuth(`${API_BASE_URL}/receta`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      setModalExito({ mostrar: true, mensaje: 'Receta guardada correctamente.' });
+      fetchInitialData(); // Recargamos la lista de recetas
+      limpiarSeleccion();
+    } catch (error: any) {
+      console.error('Error al confirmar receta:', error);
+      setModalError({ mostrar: true, mensaje: error.message });
+    }
+  };
+
+  const actualizarReceta = async (id: number, payload: Omit<RecetaPayload, 'id_torta'>) => {
+    try {
+      await fetchWithAuth(`${API_BASE_URL}/receta/${id}`, {
+        method: 'PUT', 
+        body: JSON.stringify(payload), 
+      });
+      setModalExito({ mostrar: true, mensaje: 'Receta actualizada correctamente.' });
+      fetchInitialData(); // Recargamos la lista
+      limpiarSeleccion();
+    } catch (error: any) {
+      console.error('Error al actualizar receta:', error);
+      setModalError({ mostrar: true, mensaje: error.message }); 
+    }
+  };
+
+  const eliminarReceta = async (id: number) => {
+    try {
+      await fetchWithAuth(`${API_BASE_URL}/receta/${id}`, {
+        method: 'DELETE', 
+      });
+      setModalExito({ mostrar: true, mensaje: 'Receta eliminada correctamente.' });
+      fetchInitialData(); // Recargamos la lista
+    } catch (error: any) {
+      console.error('Error al eliminar receta:', error);
+      setModalError({ mostrar: true, mensaje: error.message });
+    }
+  };
+
+  return {
+    // Datos y estado de carga
+    tortas,
     ingredientes,
+    recetas,
     loading,
+    // Estado y manejadores del formulario
+    modo,
+    recetaSeleccionada,
+    seleccionarReceta,
+    limpiarSeleccion,
+    // Funciones CRUD
     confirmarReceta,
+    actualizarReceta,
+    eliminarReceta,
+    // Modales
     modalExito,
     setModalExito,
     modalError,
-    setModalError };
+    setModalError,
+    setRecetaSeleccionada,
+    setModo,
+  };
 };

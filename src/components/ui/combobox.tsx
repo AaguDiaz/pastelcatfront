@@ -13,6 +13,7 @@ interface ComboboxProps {
   options: Option[]
   value: string
   onSelect: (value: string) => void
+  disabled?: boolean
   placeholder?: string
 }
 

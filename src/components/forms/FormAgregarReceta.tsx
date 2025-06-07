@@ -1,6 +1,5 @@
 'use client'
-
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import Combobox from '@/components/ui/combobox'
@@ -9,166 +8,228 @@ import { useRecetaData } from '@/hooks/useRecetaData'
 import ModalExito from '@/components/modals/exito'
 import ModalError from '@/components/modals/error'
 
+// El tipo local para la tabla de ingredientes, tal como estaba en tu código original
+type IngredienteAgregado = {
+  id: number;
+  ingrediente: string;
+  cantidad: string;
+  unidad: string;
+}
 
 const FormAgregarReceta = () => {
-  const [tortaSeleccionada, setTortaSeleccionada] = useState('');
-  const [porciones, setPorciones] = useState('')
-  const [ingredienteSeleccionado, setIngredienteSeleccionado] = useState('')
-  const [cantidad, setCantidad] = useState('')
-  const [unidad, setUnidad] = useState('')
-  
-  type IngredienteAgregado = {
-    id: number;
-    ingrediente: string;
-    cantidad: string;
-    unidad: string;
+  // Se importa toda la lógica y estados del hook centralizado
+  const {
+    confirmarReceta,
+    actualizarReceta,
+    modalError,
+    setModalError,
+    modalExito,
+    setModalExito,
+    tortas,
+    ingredientes,
+    loading,
+    recetaSeleccionada, // Estado global para la receta seleccionada
+    modo,               // Estado global: 'view', 'edit' o null
+    limpiarSeleccion,   // Función para resetear el estado global
+  } = useRecetaData()
+
+  // Estados locales del formulario (restaurados a su forma original)
+  const [tortaSeleccionada, setTortaSeleccionada] = useState<string>('');
+  const [porciones, setPorciones] = useState('');
+  const [ingredienteSeleccionado, setIngredienteSeleccionado] = useState('');
+  const [cantidad, setCantidad] = useState('');
+  const [unidad, setUnidad] = useState('');
+  const [ingredientesAgregados, setIngredientesAgregados] = useState<IngredienteAgregado[]>([]);
+  const [modoEdicion, setModoEdicion] = useState(false); // Modo de edición para un ingrediente en la tabla
+  const [idEditando, setIdEditando] = useState<number | null>(null);
+
+  // Variable para determinar si el formulario es de solo lectura (modo 'ver')
+  const isReadOnly = modo === 'view';
+
+  // EFECTO: Rellena el formulario cuando cambia la receta seleccionada desde el hook
+  useEffect(() => {
+  console.log('useEffect ejecutado - recetaSeleccionada:', recetaSeleccionada, 'modo:', modo, 'tortas:', tortas);
+  if (recetaSeleccionada && (modo === 'view' || modo === 'edit')) {
+    const torta = tortas.find(t => t.id_torta === recetaSeleccionada.torta.id_torta);
+    console.log('Torta encontrada:', torta, 'id_torta buscado:', recetaSeleccionada.torta.id_torta);
+    setTortaSeleccionada(torta?.nombre || '');
+    setPorciones(String(recetaSeleccionada.porciones));
+    setIngredientesAgregados(
+      recetaSeleccionada.ingredientes.map(ing => {
+        const ingrediente = {
+          id: ing.id_materiaprima,
+          ingrediente: ing.nombre,
+          cantidad: String(ing.cantidad),
+          unidad: ing.unidadmedida,
+        };
+        console.log('Ingrediente mapeado:', ingrediente);
+        return ingrediente;
+      })
+    );
+  } else {
+    console.log('Limpiando formulario, no hay receta seleccionada o modo inválido');
+    handleLimpiar();
   }
-  
-  const [ingredientesAgregados, setIngredientesAgregados] = useState<IngredienteAgregado[]>([])
-  const [modoEdicion, setModoEdicion] = useState(false)
-  const [idEditando, setIdEditando] = useState<number | null>(null)
-  const { confirmarReceta, modalError, setModalError, modalExito, setModalExito, tortas, ingredientes, loading } = useRecetaData()
+}, [recetaSeleccionada, modo, tortas]);
 
-    const handleAgregarOEditarIngrediente = () => {
-    if (!ingredienteSeleccionado || !cantidad || !unidad) return
 
-    if (modoEdicion) {
+  // ---- LÓGICA ORIGINAL PARA MANEJAR INGREDIENTES (RESTAURADA) ----
+
+  const handleAgregarOEditarIngrediente = () => {
+    if (!ingredienteSeleccionado || !cantidad || !unidad) return;
+    
+    // Si estamos editando un ingrediente de la tabla
+    if (modoEdicion && idEditando !== null) {
       setIngredientesAgregados(prev =>
         prev.map(item =>
-          item.id === idEditando ? { ...item, cantidad, unidad } : item
+          item.id === idEditando ? { ...item, ingrediente: ingredienteSeleccionado, cantidad, unidad } : item
         )
-      )
-      setModoEdicion(false)
-      setIdEditando(null)
+      );
+      setModoEdicion(false);
+      setIdEditando(null);
     } else {
+      // Si estamos agregando un nuevo ingrediente a la tabla
       const ingredienteObj = ingredientes.find(i => i.nombre === ingredienteSeleccionado);
-        if (!ingredienteObj) {
-          setModalError({ mostrar: true, mensaje: 'Ingrediente no válido.' });
-          return;
-        }
-
-        setIngredientesAgregados(prev => [
-          ...prev,
-          {
-            id: ingredienteObj.id_materiaprima,
-            ingrediente: ingredienteSeleccionado,
-            cantidad,
-            unidad
-          }
-        ]);
+      if (!ingredienteObj) {
+        setModalError({ mostrar: true, mensaje: 'Ingrediente no válido.' });
+        return;
       }
-
-    setIngredienteSeleccionado('')
-    setCantidad('')
-    setUnidad('')
-  }
-
-  const handleEditar = (item: IngredienteAgregado) => {
-    setIngredienteSeleccionado(item.ingrediente)
-    setCantidad(item.cantidad)
-    setUnidad(item.unidad)
-    setModoEdicion(true)
-    setIdEditando(item.id)
-  }
-
-  const handleEliminar = (id: number) => {
-    setIngredientesAgregados(prev => prev.filter(item => item.id !== id))
-  }
-
-  const handleLimpiar = () => {
-    setTortaSeleccionada('')
-    setPorciones('')
-    setIngredienteSeleccionado('')
-    setCantidad('')
-    setUnidad('')
-    setIngredientesAgregados([])
-    setModoEdicion(false)
-    setIdEditando(null)
-  }
-
-const handleConfirmar = async () => {
-  if (!tortaSeleccionada || !porciones || ingredientesAgregados.length === 0) {
-    // MUESTRA EL MODAL DE ERROR PARA VALIDACIÓN
-    setModalError({ mostrar: true, mensaje: 'Debes completar todos los campos de la receta antes de confirmar.' });
-    return;
-  }
-  
-  // (Aquí va la lógica corregida de la pregunta anterior para obtener el id_torta)
-  const tortaObj = tortas.find(t => t.nombre === tortaSeleccionada);
-  if (!tortaObj) {
-      setModalError({ mostrar: true, mensaje: 'La torta seleccionada no es válida.' });
-      return;
-  }
-  const idTorta = tortaObj.id_torta;
-
-  const porcionesNum = parseInt(porciones);
-  const ingredientesFormateados = ingredientesAgregados.map(item => ({
-    id_materiaprima: item.id,
-    cantidad: parseFloat(item.cantidad),
-    unidadmedida: item.unidad
-  }));
-
-  const payload = {
-    id_torta: idTorta,
-    porciones: porcionesNum,
-    ingredientes: ingredientesFormateados
+      setIngredientesAgregados(prev => [
+        ...prev,
+        { id: ingredienteObj.id_materiaprima, ingrediente: ingredienteSeleccionado, cantidad, unidad }
+      ]);
+    }
+    // Limpia los campos del ingrediente
+    setIngredienteSeleccionado('');
+    setCantidad('');
+    setUnidad('');
   };
 
-  try {
-    await confirmarReceta(payload);
-    // SI TODO SALE BIEN, MUESTRA EL MODAL DE ÉXITO
-    setModalExito({ mostrar: true, mensaje: 'La receta se ha guardado correctamente.' });
-    handleLimpiar(); // Limpiamos el formulario después de mostrar el éxito
-  } catch (err) {
-    console.error(err);
-    // SI HAY UN ERROR CON LA API, MUESTRA EL MODAL DE ERROR
-    const mensajeError = err instanceof Error ? err.message : 'No se pudo conectar con el servidor. Inténtalo de nuevo más tarde.';
-    setModalError({ mostrar: true, mensaje: mensajeError });
-  }
-};
+  // Carga un ingrediente de la tabla en los campos de edición
+  const handleEditarIngrediente = (item: IngredienteAgregado) => {
+    setIngredienteSeleccionado(item.ingrediente);
+    setCantidad(item.cantidad);
+    setUnidad(item.unidad);
+    setModoEdicion(true);
+    setIdEditando(item.id);
+  };
+
+  // Elimina un ingrediente de la tabla
+  const handleEliminarIngrediente = (id: number) => {
+    setIngredientesAgregados(prev => prev.filter(item => item.id !== id));
+  };
+
+
+  // ---- FUNCIONES PRINCIPALES DEL FORMULARIO (MODIFICADAS PARA INTEGRACIÓN) ----
+
+  const handleLimpiar = () => {
+    // Resetea todos los estados locales del formulario
+    setTortaSeleccionada('');
+    setPorciones('');
+    setIngredienteSeleccionado('');
+    setCantidad('');
+    setUnidad('');
+    setIngredientesAgregados([]);
+    setModoEdicion(false);
+    setIdEditando(null);
+    // Y también resetea el estado global del hook para volver al modo 'crear'
+    limpiarSeleccion();
+  };
+
+  const handleConfirmar = async () => {
+    if (!tortaSeleccionada || !porciones || ingredientesAgregados.length === 0) {
+      setModalError({ mostrar: true, mensaje: 'Debes completar todos los campos.' });
+      return;
+    }
+
+    const ingredientesFormateados = ingredientesAgregados.map(item => ({
+      id_materiaprima: item.id,
+      cantidad: parseFloat(item.cantidad),
+      unidadmedida: item.unidad
+    }));
+    
+    // Si estamos en modo 'edit', llamamos a la función de actualizar
+    if (modo === 'edit' && recetaSeleccionada) {
+      const payload = {
+        porciones: parseInt(porciones),
+        ingredientes: ingredientesFormateados,
+      };
+      await actualizarReceta(recetaSeleccionada.id_receta, payload);
+    } else {
+      // Si no, estamos en modo 'crear', llamamos a la función original
+      const tortaObj = tortas.find(t => t.nombre === tortaSeleccionada);
+      if (!tortaObj) {
+        setModalError({ mostrar: true, mensaje: 'La torta seleccionada no es válida.' });
+        return;
+      }
+      const payload = {
+        id_torta: tortaObj.id_torta,
+        porciones: parseInt(porciones),
+        ingredientes: ingredientesFormateados
+      };
+      await confirmarReceta(payload);
+    }
+    // Tras una operación exitosa, el hook se encarga de limpiar y recargar
+  };
+
+
   if (loading) {
-    return <div className="p-6 text-center">Cargando datos...</div>
+    return <div className="p-6 text-center">Cargando datos...</div>;
   }
 
+  // ---- RENDERIZADO DEL COMPONENTE (ESTRUCTURA ORIGINAL RESTAURADA) ----
   return (
     <div className="bg-pastel-cream text-black p-6 rounded-2xl shadow-2xl">
-      <h2 className="text-2xl font-semibold mb-4">Agregar Receta</h2>
-
+      <h2 className="text-2xl font-semibold mb-4">
+        {modo === 'edit' ? 'Editar Receta' : modo === 'view' ? 'Detalles de la Receta' : 'Agregar Receta'}
+      </h2>
+      
+      {/* Campos principales del formulario */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div className="flex-grow min-w-[150px]">
+        <div>
           <label className="text-sm font-medium">Torta</label>
           <Combobox
-            options={tortas.map(t => ({ id: String(t.id_torta), nombre: t.nombre }))} value={tortaSeleccionada} onSelect={setTortaSeleccionada} />
+            options={tortas.map(t => ({ id: String(t.id_torta), nombre: t.nombre }))}
+            value={tortaSeleccionada}
+            onSelect={setTortaSeleccionada}
+            disabled={modo === 'edit' || isReadOnly} // Se deshabilita al editar o ver
+          />
         </div>
-
-        <div className="flex-grow min-w-[150px]">
+        <div>
           <label className="text-sm font-medium">Porciones</label>
-          <Input type="number" placeholder="Ej: 22" value={porciones} onChange={(e) => setPorciones(e.target.value)} />
+          <Input type="number" placeholder="Ej: 22" value={porciones}
+            onChange={(e) => setPorciones(e.target.value)}
+            readOnly={isReadOnly} // Solo lectura en modo 'ver'
+          />
         </div>
-
-        <div className="flex-grow min-w-[150px]">
+        <div>
           <label className="text-sm font-medium">Ingrediente</label>
-          <Combobox options={ingredientes.map(i => ({ id: String(i.id_materiaprima), nombre: i.nombre }))} value={ingredienteSeleccionado} onSelect={setIngredienteSeleccionado} />
+          <Combobox options={ingredientes.map(i => ({ id: String(i.id_materiaprima), nombre: i.nombre }))}
+            value={ingredienteSeleccionado}
+            onSelect={setIngredienteSeleccionado}
+            disabled={isReadOnly} // Deshabilitado en modo 'ver'
+          />
         </div>
       </div>
 
-      {ingredienteSeleccionado && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div className="flex-grow min-w-[150px]">
+      {/* Sección para agregar/editar ingredientes (aparece al seleccionar un ingrediente) */}
+      {ingredienteSeleccionado && !isReadOnly && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-end">
+          <div>
             <label className="text-sm font-medium">Cantidad</label>
             <Input type="number" placeholder="Ej: 1" value={cantidad} onChange={(e) => setCantidad(e.target.value)} />
           </div>
-          <div className="flex-grow min-w-[150px]">
+          <div>
             <label className="text-sm font-medium">Unidad</label>
             <Input placeholder="Unidad" value={unidad} onChange={(e) => setUnidad(e.target.value)} />
           </div>
-
-          <Button className="bg-pastel-blue hover:bg-blue-400 mt-6" onClick={handleAgregarOEditarIngrediente}>
+          <Button className="bg-pastel-blue hover:bg-blue-400" onClick={handleAgregarOEditarIngrediente}>
             {modoEdicion ? 'Confirmar Edición' : 'Agregar Ingrediente'}
           </Button>
         </div>
       )}
 
+      {/* Tabla de ingredientes agregados */}
       <table className="w-full text-left">
         <thead>
           <tr className="border-b">
@@ -180,16 +241,16 @@ const handleConfirmar = async () => {
         </thead>
         <tbody>
           {ingredientesAgregados.map(item => (
-            <tr key={item.id} className="text-left">
+            <tr key={item.id} className="text-left border-t">
               <td className="py-2">{item.ingrediente}</td>
               <td className="py-2">{item.cantidad}</td>
               <td className="py-2">{item.unidad}</td>
               <td className="py-2 space-x-2">
-                <Button className="bg-pastel-blue hover:bg-blue-400 transition-transform" size="sm" onClick={() => handleEditar(item)}>
-                  Editar <Pencil size={16} />
+                <Button className="bg-pastel-blue hover:bg-blue-400" size="sm" onClick={() => handleEditarIngrediente(item)} disabled={isReadOnly}>
+                  <Pencil size={16} /> Editar
                 </Button>
-                <Button className="bg-pastel-red hover:bg-red-400 transition-transform" size="sm" onClick={() => handleEliminar(item.id)}>
-                  Eliminar <Trash2 size={16} />
+                <Button className="bg-pastel-red hover:bg-red-400" size="sm" onClick={() => handleEliminarIngrediente(item.id)} disabled={isReadOnly}>
+                  <Trash2 size={16} /> Eliminar
                 </Button>
               </td>
             </tr>
@@ -197,28 +258,33 @@ const handleConfirmar = async () => {
         </tbody>
       </table>
 
+      {/* Botones de acción principales */}
       <div className="mt-6 flex gap-4">
-        <Button className="bg-pastel-blue hover:bg-blue-400 transition-transform" onClick={handleConfirmar}>Confirmar Receta</Button>
-        <Button className="bg-pastel-yellow hover:bg-yellow-400 transition-transform" onClick={handleLimpiar}>Limpiar</Button>
+        <Button className="bg-pastel-blue hover:bg-blue-400" onClick={handleConfirmar} disabled={isReadOnly}>
+            {modo === 'edit' ? 'Guardar Cambios' : 'Confirmar Receta'}
+        </Button>
+        <Button className="bg-pastel-yellow hover:bg-yellow-400" onClick={handleLimpiar}>
+          Limpiar
+        </Button>
       </div>
-       
-       {modalExito.mostrar && (
-      <ModalExito
-        titulo="¡Éxito!"
-        mensaje={modalExito.mensaje}
-        onClose={() => setModalExito({ mostrar: false, mensaje: '' })}
-      />
-    )}
-
-    {modalError.mostrar && (
-      <ModalError
-        titulo="Ocurrió un Error"
-        mensaje={modalError.mensaje}
-        onClose={() => setModalError({ mostrar: false, mensaje: '' })}
-      />
-    )}
+      
+      {/* Modales de feedback */}
+      {modalExito.mostrar && (
+        <ModalExito
+          titulo="¡Éxito!"
+          mensaje={modalExito.mensaje}
+          onClose={() => setModalExito({ mostrar: false, mensaje: '' })}
+        />
+      )}
+      {modalError.mostrar && (
+        <ModalError
+          titulo="Ocurrió un Error"
+          mensaje={modalError.mensaje}
+          onClose={() => setModalError({ mostrar: false, mensaje: '' })}
+        />
+      )}
     </div>
   )
 }
 
-export default FormAgregarReceta
+export default FormAgregarReceta;
