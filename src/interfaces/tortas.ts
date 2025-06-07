@@ -13,3 +13,8 @@ export interface TortasApiResponse {
     tamanio: string;
     imagen: string;
 }
+
+export interface TortaSelect {
+  id_torta: number;
+  nombre: string;
+}
