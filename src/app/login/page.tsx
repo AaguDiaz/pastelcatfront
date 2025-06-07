@@ -3,21 +3,20 @@
 import {useState} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
+const API_BASE_URL =  'https://pastelcatback.onrender.com'; //'http://localhost:5000'; //'https://pastelcatback.onrender.com'; 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try{
-      const res = await fetch('https://pastelcatback.onrender.com/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
