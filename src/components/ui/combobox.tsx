@@ -17,7 +17,7 @@ interface ComboboxProps {
   placeholder?: string
 }
 
-const Combobox = ({ options, value, onSelect, placeholder = 'Seleccionar...' }: ComboboxProps) => {
+const Combobox = ({ options, value, onSelect, disabled = false, placeholder = 'Seleccionar...' }: ComboboxProps) => {
   const [query, setQuery] = useState('')
 
   const filteredOptions =
@@ -34,13 +34,15 @@ const Combobox = ({ options, value, onSelect, placeholder = 'Seleccionar...' }: 
           <HeadlessCombobox.Input
             className="w-full border rounded-lg py-1 pl-3 pr-10 shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
             displayValue={(val: string) => val}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => !disabled && setQuery(event.target.value)}
             placeholder={placeholder}
+            readOnly={disabled}
           />
+          {!disabled && (
           <HeadlessCombobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
             <ChevronUpDownIcon className="h-5 w-5 text-gray-400" />
           </HeadlessCombobox.Button>
-        
+        )}
 
         <Transition
           as={Fragment}
@@ -49,6 +51,7 @@ const Combobox = ({ options, value, onSelect, placeholder = 'Seleccionar...' }: 
           leaveTo="opacity-0"
           afterLeave={() => setQuery('')}
         >
+          {!disabled && (
           <HeadlessCombobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm">
             {filteredOptions.length === 0 ? (
               <div className="relative cursor-default select-none px-4 py-2 text-gray-700">
@@ -85,6 +88,7 @@ const Combobox = ({ options, value, onSelect, placeholder = 'Seleccionar...' }: 
               ))
             )}
           </HeadlessCombobox.Options>
+          )}
         </Transition>
         </div>
       </HeadlessCombobox>

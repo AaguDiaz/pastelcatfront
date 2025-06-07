@@ -16,13 +16,9 @@ const PageReceta = () => {
   return (
     <main className="p-6">
       <div className="flex flex-col gap-6">
-        {/* Pasa todos los datos y funciones necesarios a FormAgregarReceta */}
         <FormAgregarReceta
-          // Pasa todos los valores y setters que el formulario necesita
           {...recetaData}
         />
-        
-        {/* Pasa solo los datos y funciones que la tabla necesita */}
         <FormTablaReceta
           recetas={recetaData.recetas}
           seleccionarReceta={recetaData.seleccionarReceta}

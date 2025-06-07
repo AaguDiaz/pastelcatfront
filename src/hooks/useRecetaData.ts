@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { TortaSelect } from '@/interfaces/tortas';
 import { Ingrediente,Receta ,RecetaPayload } from '@/interfaces/recetas'; 
+import { ApiTorta,ApiIngrediente,ApiReceta,ApiRecetaIngrediente } from '@/interfaces/api'; // Asegúrate de que Api esté definido correctamente
 
-const API_BASE_URL ='https://pastelcatback.onrender.com' ; //'http://localhost:5000'
+const API_BASE_URL =  'https://pastelcatback.onrender.com'; //'http://localhost:5000'; //'https://pastelcatback.onrender.com';
 
 type ModalState = {
   mostrar: boolean;
@@ -66,14 +67,14 @@ export const useRecetaData = () => {
     ]);
 
     setTortas(
-      dataTortas.map((t: any) => ({
+      (dataTortas as ApiTorta[]).map((t: ApiTorta) => ({
         id_torta: t.id_torta,
         nombre: `${t.nombre}${t.tamanio ? ' ' + t.tamanio : ''}`,
       }))
     );
 
     setIngredientes(
-      dataIngredientes.map((i: any) => ({
+      (dataIngredientes as ApiIngrediente[]).map((i: ApiIngrediente) => ({
         id_materiaprima: i.id_materiaprima,
         nombre: i.nombre,
       }))
@@ -81,7 +82,7 @@ export const useRecetaData = () => {
 
     // Transformar las recetas para incluir ingredientes
     const recetasTransformadas = await Promise.all(
-      dataRecetas.map(async (receta: any) => {
+      (dataRecetas as ApiReceta[]).map(async (receta: ApiReceta) => {
         const ingredientesReceta = await fetchWithAuth(`${API_BASE_URL}/receta/${receta.id_receta}/ingredientes`);
         return {
           id_receta: receta.id_receta,
@@ -91,7 +92,7 @@ export const useRecetaData = () => {
             tamanio: receta.torta.tamanio,
           },
           porciones: receta.porciones,
-          ingredientes: ingredientesReceta.map((ing: any) => ({
+          ingredientes: (ingredientesReceta as ApiRecetaIngrediente[]).map((ing: ApiRecetaIngrediente) => ({
             id_materiaprima: ing.id,
             nombre: ing.ingrediente,
             cantidad: ing.cantidad,
@@ -137,7 +138,6 @@ export const useRecetaData = () => {
   };
   
   // --- FUNCIONES CRUD ---
-
   const confirmarReceta = async (payload: RecetaPayload) => {
     try {
       await fetchWithAuth(`${API_BASE_URL}/receta`, {
@@ -147,9 +147,13 @@ export const useRecetaData = () => {
       setModalExito({ mostrar: true, mensaje: 'Receta guardada correctamente.' });
       fetchInitialData(); // Recargamos la lista de recetas
       limpiarSeleccion();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al confirmar receta:', error);
-      setModalError({ mostrar: true, mensaje: error.message });
+        if (error instanceof Error) {
+            setModalError({ mostrar: true, mensaje: error.message }); // 
+        } else {
+            setModalError({ mostrar: true, mensaje: 'Ocurrió un error inesperado.' });
+        }
     }
   };
 
@@ -162,9 +166,13 @@ export const useRecetaData = () => {
       setModalExito({ mostrar: true, mensaje: 'Receta actualizada correctamente.' });
       fetchInitialData(); // Recargamos la lista
       limpiarSeleccion();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al actualizar receta:', error);
-      setModalError({ mostrar: true, mensaje: error.message }); 
+        if (error instanceof Error) {
+            setModalError({ mostrar: true, mensaje: error.message }); // 
+        } else {
+            setModalError({ mostrar: true, mensaje: 'Ocurrió un error inesperado.' });
+        }
     }
   };
 
@@ -175,9 +183,13 @@ export const useRecetaData = () => {
       });
       setModalExito({ mostrar: true, mensaje: 'Receta eliminada correctamente.' });
       fetchInitialData(); // Recargamos la lista
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al eliminar receta:', error);
-      setModalError({ mostrar: true, mensaje: error.message });
+        if (error instanceof Error) {
+            setModalError({ mostrar: true, mensaje: error.message }); // 
+        } else {
+            setModalError({ mostrar: true, mensaje: 'Ocurrió un error inesperado.' });
+        }
     }
   };
 

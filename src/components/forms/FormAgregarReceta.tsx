@@ -33,6 +33,7 @@ const FormAgregarReceta = (props: FormAgregarRecetaProps) => {
     limpiarSeleccion,
   } = props;
   const [tortaSeleccionada, setTortaSeleccionada] = useState<string>('');
+  const [nombreTorta, setNombreTorta] = useState('');
   const [porciones, setPorciones] = useState('');
   const [ingredienteSeleccionado, setIngredienteSeleccionado] = useState('');
   const [cantidad, setCantidad] = useState('');
@@ -46,14 +47,10 @@ const FormAgregarReceta = (props: FormAgregarRecetaProps) => {
 
   // EFECTO: Rellena el formulario cuando cambia la receta seleccionada desde el hook
   useEffect(() => {
-    console.log(
-      'useEffect en FormAgregarReceta EJECUTADO:',
-      'recetaSeleccionada:', recetaSeleccionada,
-      'modo:', modo
-    );
     if (recetaSeleccionada && (modo === 'view' || modo === 'edit')) { 
-      const torta = tortas.find(t => t.id_torta === recetaSeleccionada.torta.id_torta); 
-      setTortaSeleccionada(torta?.nombre || '');
+      const nombreTortaCompleto = `${recetaSeleccionada.torta.nombre}${recetaSeleccionada.torta.tamanio ? ' ' + recetaSeleccionada.torta.tamanio : ''}`;
+      setNombreTorta(nombreTortaCompleto);
+      setTortaSeleccionada(String(recetaSeleccionada.torta.id_torta));
       setPorciones(String(recetaSeleccionada.porciones));
       setIngredientesAgregados(
         recetaSeleccionada.ingredientes.map(ing => ({
@@ -65,7 +62,6 @@ const FormAgregarReceta = (props: FormAgregarRecetaProps) => {
       );
     } else {
       // Si no hay receta seleccionada, se limpian los campos locales
-      // handleLimpiar() ya no es necesario aquí porque limpiarSeleccion()
       // no afecta los estados locales directamente.
       setTortaSeleccionada('');
       setPorciones('');
@@ -76,7 +72,7 @@ const FormAgregarReceta = (props: FormAgregarRecetaProps) => {
       setModoEdicion(false);
       setIdEditando(null);
     }
-  }, [recetaSeleccionada, modo, tortas]); // Las dependencias son correctas.
+  }, [recetaSeleccionada, modo, tortas]); 
 
   const handleAgregarOEditarIngrediente = () => {
     if (!ingredienteSeleccionado || !cantidad || !unidad) return;
@@ -124,6 +120,7 @@ const FormAgregarReceta = (props: FormAgregarRecetaProps) => {
 
   const handleLimpiar = () => {
     // Resetea todos los estados locales del formulario
+    setNombreTorta('');
     setTortaSeleccionada('');
     setPorciones('');
     setIngredienteSeleccionado('');
@@ -157,19 +154,19 @@ const FormAgregarReceta = (props: FormAgregarRecetaProps) => {
       await actualizarReceta(recetaSeleccionada.id_receta, payload);
     } else {
       // Si no, estamos en modo 'crear', llamamos a la función original
-      const tortaObj = tortas.find(t => t.nombre === tortaSeleccionada);
-      if (!tortaObj) {
-        setModalError({ mostrar: true, mensaje: 'La torta seleccionada no es válida.' });
-        return;
+      if (!tortaSeleccionada) {
+            setModalError({ mostrar: true, mensaje: 'La torta seleccionada no es válida.' });
+            return;
+        }
+        const payload = {
+            id_torta: parseInt(tortaSeleccionada), 
+            porciones: parseInt(porciones), 
+            ingredientes: ingredientesFormateados 
+        };
+        await confirmarReceta(payload);
       }
-      const payload = {
-        id_torta: tortaObj.id_torta,
-        porciones: parseInt(porciones),
-        ingredientes: ingredientesFormateados
-      };
-      await confirmarReceta(payload);
-    }
     // Tras una operación exitosa, el hook se encarga de limpiar y recargar
+    setNombreTorta('');
   };
 
   return (
@@ -182,12 +179,15 @@ const FormAgregarReceta = (props: FormAgregarRecetaProps) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
           <label className="text-sm font-medium">Torta</label>
-          <Combobox
-            options={tortas.map(t => ({ id: String(t.id_torta), nombre: t.nombre }))}
-            value={tortaSeleccionada}
-            onSelect={setTortaSeleccionada}
-            disabled={modo === 'edit' || isReadOnly} // Se deshabilita al editar o ver
-          />
+          {modo === 'view' || modo === 'edit'? (
+            <Input value={nombreTorta} readOnly={true} className="bg-gray-200" />) : (
+            <Combobox
+              options={tortas.map(t => ({ id: String(t.id_torta), nombre: t.nombre }))}
+              value={tortaSeleccionada}
+              onSelect={setTortaSeleccionada}
+              disabled={modo === 'edit' || isReadOnly} // Se deshabilita al editar o ver
+            />
+        )}
         </div>
         <div>
           <label className="text-sm font-medium">Porciones</label>
