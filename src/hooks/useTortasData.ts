@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback} from 'react';
 import { useRouter } from 'next/navigation';
 import { Torta, TortasApiResponse } from '../interfaces/tortas';
 
-const API_BASE_URL = 'https://pastelcatback.onrender.com'; //'http://localhost:5000';
+const API_BASE_URL = 'https://pastelcatback.onrender.com'; // 'http://localhost:5000'; //
 
 export const useTortasData = (initialSearch = '') => {
   const [tortas, setTortas] = useState<Torta[]>([]);
@@ -85,6 +85,39 @@ export const useTortasData = (initialSearch = '') => {
     }
   }, [router]); // router es una dependencia
 
+  const fetchRecetaDetails = async (tortaID: any)=>{
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/receta/detalles/torta/${tortaID}`, {
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+          'Content-Type': 'application/json',
+        },
+      });
+      if (res.status === 404) {
+          return null;
+        }
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('token');
+          router.push('/login');
+          return null;
+        }
+        let errorMessage = 'Error al obtener los detalles de la torta';
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch { /* No hacer nada si el cuerpo no es JSON */ }
+        throw new Error(errorMessage);
+      }
+
+      const data = await res.json();
+      return data; // Retornar los detalles de la torta
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ocurrió un error desconocido al obtener los detalles de la torta');
+      return null;
+    }
+  }
   // Efecto para la carga inicial y cuando cambia el término de búsqueda
   useEffect(() => {
     setCurrentPage(1); 
@@ -237,5 +270,6 @@ export const useTortasData = (initialSearch = '') => {
     deleteTorta,
     isCreating,
     createError,
+    fetchRecetaDetails, // Función para obtener detalles de la receta
   };
 };
