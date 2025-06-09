@@ -73,8 +73,12 @@ export default function Detallestorta({ torta, onClose, fetchRecetaDetails }: Ve
             setIngredientes(ingredientesConCosto);
             setCostoTotal(costoAcumulado);
         }
-      } catch (err: any) {
-        setError(err.message || 'No se pudo cargar la receta.');
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('No se pudo cargar la receta.');
+        }
       } finally {
         setIsLoading(false);
       }
