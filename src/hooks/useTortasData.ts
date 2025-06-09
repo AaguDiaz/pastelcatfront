@@ -85,7 +85,7 @@ export const useTortasData = (initialSearch = '') => {
     }
   }, [router]); // router es una dependencia
 
-  const fetchRecetaDetails = async (tortaID: any)=>{
+  const fetchRecetaDetails = async (tortaID: number)=>{
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_BASE_URL}/receta/detalles/torta/${tortaID}`, {

@@ -40,7 +40,6 @@ export default function Detallestorta({ torta, onClose, fetchRecetaDetails }: Ve
   const [error, setError] = useState<string | null>(null);
   const [ingredientes, setIngredientes] = useState<IngredienteConCosto[]>([]);
   const [costoTotal, setCostoTotal] = useState<number | null>(null);
-  const [porciones, setPorciones] = useState<number | null>(null);
 
 
    useEffect(() => {
@@ -56,10 +55,8 @@ export default function Detallestorta({ torta, onClose, fetchRecetaDetails }: Ve
           // Si es null, significa que no se encontró receta (404)
           // Dejamos los arrays y valores en su estado inicial/vacío.
           setIngredientes([]);
-          setPorciones(null);
           setCostoTotal(null);
         } else {
-            setPorciones(data.porciones);
             let costoAcumulado = 0;
             const ingredientesConCosto = data.ingredientes.map(ing => {
             const costo = calcularCostoIngrediente(ing);
