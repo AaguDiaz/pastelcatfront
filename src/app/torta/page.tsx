@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, Pencil, Info, Loader2 } from 'lucide-react';
 import { Torta } from '@/interfaces/tortas';
 import EliminarModal from '@/components/modals/eliminar';
+import Detallestorta from '@/components/modals/detallestorta';
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -27,6 +28,7 @@ export default function TortasPage(): JSX.Element {
   const [isEditing, setIsEditing] = useState(false);
   const [editingTorta, setEditingTorta] = useState<Torta | null>(null);
   const [tortaToDelete, setTortaToDelete] = useState<Torta | null>(null);
+  const [tortaDetails, setTortaDetails] = useState<Torta | null>(null);
 
   const {
     tortas: displayedTortas, // El hook ahora devuelve el array acumulado
@@ -41,6 +43,7 @@ export default function TortasPage(): JSX.Element {
     deleteTorta,
     isCreating,
     createError,
+    fetchRecetaDetails,
   } = tortasHooks.useTortasData()
 
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -115,6 +118,10 @@ export default function TortasPage(): JSX.Element {
     setTortaToDelete(null); // Cerrar el modal
   };
 
+  const handleViewDetails = (torta: Torta) => {
+    setTortaDetails(torta);
+  };
+
   return (
     <div className="min-h-screen bg-pastel-beige p-4 md:p-8">
       <div className="mb-8 p-6 bg-pastel-cream rounded-lg shadow-xl space-y-6">
@@ -165,7 +172,6 @@ export default function TortasPage(): JSX.Element {
 
       {/* Mensaje de carga inicial */}
       {isLoading && <p className="text-center text-gray-600 my-8">Cargando tortas...</p>}
-      {error &&  !isLoading && <p className="text-center text-red-600 my-8">Error: {error} </p>}
 
       {/* Grid de Tortas con Animación */}
       {displayedTortas.length > 0 && (
@@ -193,7 +199,7 @@ export default function TortasPage(): JSX.Element {
                     <div className="mt-auto pt-3 border-t border-gray-200 flex flex-wrap justify-center items-center gap-2">
                       <Button className="bg-pastel-blue hover:bg-blue-200" variant="ghost" title="Editar" onClick={() => handleEditTorta(torta)}><Pencil className="h-4 w-4 " />Editar</Button>
                       <Button className="bg-pastel-red hover:bg-red-200" variant="ghost" title="Eliminar" onClick={()=>handleDeleteTorta(torta)}><Trash2 className="h-4 w-4" />Eliminar</Button>
-                      <Button  className='bg-pastel-yellow hover:bg-yellow-100' variant="ghost" title="Ver Detalles" ><Info className="h-4 w-4" />Ver detalles</Button>
+                      <Button  className='bg-pastel-yellow hover:bg-yellow-100' variant="ghost" title="Ver Detalles" onClick={()=> handleViewDetails(torta)}><Info className="h-4 w-4" />Ver detalles</Button>
                     </div>
                 </div>
               </motion.div>
@@ -223,7 +229,14 @@ export default function TortasPage(): JSX.Element {
           onClose={handleDeleteConfirm}
         />
       )}
-
+      {/* Renderizar el modal de detalles si hay una torta seleccionada */}
+      {tortaDetails && (
+        <Detallestorta
+          torta={tortaDetails}
+          onClose={() => setTortaDetails(null)}
+          fetchRecetaDetails={fetchRecetaDetails}
+        />
+      )}
     </div>
   );
 }

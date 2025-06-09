@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, Pencil} from 'lucide-react'
-const API_BASE_URL = 'https://pastelcatback.onrender.com'; //'http://localhost:5000';
+const API_BASE_URL = 'https://pastelcatback.onrender.com'; //'http://localhost:5000';// 
 
 interface MateriaPrima {
   id: number;

@@ -20,4 +20,5 @@ export interface ApiRecetaIngrediente {
     ingrediente: string;
     cantidad: number;
     unidad: string;
+    precio: number;
 }
