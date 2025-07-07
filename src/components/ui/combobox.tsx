@@ -15,9 +15,10 @@ interface ComboboxProps {
   onSelect: (value: string) => void
   disabled?: boolean
   placeholder?: string
+  tooltipMessage?: string;
 }
 
-const Combobox = ({ options, value, onSelect, disabled = false, placeholder = 'Seleccionar...' }: ComboboxProps) => {
+const Combobox = ({ options, value, onSelect, disabled = false, placeholder = 'Seleccionar...', tooltipMessage }: ComboboxProps) => {
   const [query, setQuery] = useState('')
 
   const filteredOptions =
