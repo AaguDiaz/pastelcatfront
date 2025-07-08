@@ -1,55 +1,19 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// Importa las funciones de cálculo de costos
-import { normalizarUnidad, calcularCostoIngrediente } from '@/lib/calculoCostos'; // Asegúrate de que la ruta sea correcta
-import { Bandeja } from '@/app/bandeja/bdprueba'; // Mantener el tipo Bandeja si se usa para otros estados
+import { calcularCostoIngrediente } from '@/lib/calculoCostos'; 
+import { Bandeja, MateriaPrimaBackend, IngredienteRecetaBackend, RecetaBackend, TortaBackend, TortaDisponible, TortaEnBandeja } from '@/interfaces/bandejas'; 
+
 
 const API_BASE_URL = 'http://localhost:5000'; //'https://pastelcatback.onrender.com'; // 
 
-// Definir los tipos de datos brutos que vienen del backend
-interface MateriaPrimaBackend {
-    id_materiaprima: number;
-    nombre: string;
-    unidadmedida: string;
-    preciototal: number; // Precio de la cantidad base de la materia prima
-    cantidad: number; // Cantidad de la materia prima en su unidad base
-}
-
-interface IngredienteRecetaBackend {
-    cantidad: number;
-    unidadmedida: string;
-    materiaprima: MateriaPrimaBackend;
-}
-
-interface RecetaBackend {
-    id_receta: number;
-    porciones: number;
-    ingredientereceta: IngredienteRecetaBackend[];
-}
-
-interface TortaBackend {
-    id_torta: number;
-    nombre: string;
-    tamanio: string;
-    receta: RecetaBackend []; // Puede ser null si no tiene receta
-}
-
-// Definir el tipo de Torta ya procesada para el frontend
-interface TortaDisponible {
-    id_torta: number;
-    nombre: string;
-    tamanio: string;
-    porciones_receta: number;
-    costo_por_porcion: number;
-}
-
 export const useBandejaData = () => {
-    const [bandejas, setBandejas] = useState<Bandeja[]>([]); // Se obtendrá del backend más adelante
+    const [bandejas, setBandejas] = useState<Bandeja[]>([]);
     const [tortasDisponibles, setTortasDisponibles] = useState<TortaDisponible[]>([]);
     const [bandejaSeleccionada, setBandejaSeleccionada] = useState<Bandeja | null>(null);
     const [modo, setModo] = useState<'create' | 'edit' | 'view'>('create');
-
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
     const fetchTortasYCalcularCostos = async () => {
@@ -136,13 +100,75 @@ export const useBandejaData = () => {
             }
         };
 
+    const agregarBandeja = async (bandejaData: { nombre: string; precio: number | null; tamanio: string; imagen: File | null; tortas: TortaEnBandeja[] }) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                router.push('/login');
+                throw new Error('No autenticado. Por favor, inicia sesión.');
+            }
+
+            const formData = new FormData();
+            formData.append('nombre', bandejaData.nombre);
+            formData.append('tamanio', bandejaData.tamanio);
+            if (bandejaData.precio !== null) {
+                formData.append('precio', String(bandejaData.precio));
+            }
+            if (bandejaData.imagen) {
+                formData.append('imagen', bandejaData.imagen); // Adjuntar el objeto File directamente
+            }
+            // Las tortas se envían como un string JSON para que el backend lo parsee
+            formData.append('tortas', JSON.stringify(bandejaData.tortas));
+
+            formData.forEach((value, key) => {
+                console.log(`→ FormData: ${key}`, value);
+            });
+
+
+            const response = await fetch(`${API_BASE_URL}/bandejas`, { // Nueva ruta POST /bandejas
+                method: 'POST',
+                headers: {
+                    ...(token && { Authorization: `Bearer ${token}` }),
+                },
+                body: formData,
+            });
+
+            console.log("→ Response status:", response.status);
+            const text = await response.text();
+            console.log("→ Respuesta texto crudo:", text);
+
+            if (!response.ok) {
+                if (response.status === 401 || response.status === 403) {
+                    localStorage.removeItem('token');
+                    router.push('/login');
+                }
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Error al guardar la bandeja.');
+            }
+
+            const nuevaBandeja: Bandeja = await response.json(); // Casteamos a la interfaz Bandeja
+            console.log('Bandeja guardada con éxito:', nuevaBandeja);
+            // Si gestionas el estado de todas las bandejas aquí, podrías añadirla
+            setBandejas(prevBandejas => [...prevBandejas, nuevaBandeja]); // Actualiza el estado de bandejas
+            return nuevaBandeja;
+        } catch (err: any) {
+            console.error("→ Error atrapado en agregarBandeja:", err);
+            setError(err.message || 'Error desconocido al agregar bandeja.');
+            throw err; // Re-lanza el error para que el componente pueda manejarlo
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchTortasYCalcularCostos();
 
     }, []); // El efecto se ejecuta una sola vez al montar el componente
 
     const seleccionarBandeja = (id: number, newMode: 'edit' | 'view') => {
-        const bandeja = bandejas.find(b => b.id === id);
+        const bandeja = bandejas.find(b => b.id_bandeja === id);
         if (bandeja) {
             setBandejaSeleccionada(bandeja);
             setModo(newMode);
@@ -162,5 +188,8 @@ export const useBandejaData = () => {
         modo,
         seleccionarBandeja,
         limpiarSeleccion,
+        agregarBandeja,
+        loading,
+        error,
     };
 };

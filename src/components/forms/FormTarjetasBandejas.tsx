@@ -5,7 +5,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, Info } from 'lucide-react';
-import { Bandeja } from '@/app/bandeja/bdprueba';
+import { Bandeja } from '@/interfaces/bandejas'; // Asegúrate de que la ruta sea correcta
 import { Input } from '../ui/input';
 
 interface FormTablaBandejaProps {
@@ -40,7 +40,7 @@ export const FormTablaBandeja = ({ bandejas, seleccionarBandeja }: FormTablaBand
         />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {bandejasMostradas.map(bandeja => (
-          <div key={bandeja.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+          <div key={bandeja.id_bandeja} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
             <div className="relative w-full h-64 md:h-72">
               <Image
                 src={bandeja.imagen || '/cupcake.jpg'}
@@ -53,15 +53,15 @@ export const FormTablaBandeja = ({ bandejas, seleccionarBandeja }: FormTablaBand
             <div className="p-4 flex flex-col flex-grow">
               <h3 className="text-lg font-semibold text-gray-800 mb-1">{bandeja.nombre}</h3>
               <p className="text-md font-bold text-green-600 mb-2">${Number(bandeja.precio).toFixed(2)}</p>
-              <p className="text-sm text-gray-500 mb-2">Tamaño: {bandeja.tamaño}</p>
+              <p className="text-sm text-gray-500 mb-2">Tamaño: {bandeja.tamanio}</p>
               <div className="mt-auto pt-3 border-t border-gray-200 flex flex-wrap justify-center items-center gap-2">
-                <Button title="Editar" size="sm" className="bg-pastel-blue hover:bg-blue-200" onClick={() => seleccionarBandeja(bandeja.id, 'edit')}>
+                <Button title="Editar" size="sm" className="bg-pastel-blue hover:bg-blue-200" onClick={() => seleccionarBandeja(bandeja.id_bandeja, 'edit')}>
                     <Pencil className="h-4 w-4" /> Editar
                 </Button>
                 <Button title="Eliminar" size="sm" className="bg-pastel-red hover:bg-red-200">
                     <Trash2 className="h-4 w-4" /> Eliminar
                 </Button>
-                <Button title="Ver Detalles" size="sm" className="bg-pastel-yellow hover:bg-yellow-100" onClick={() => seleccionarBandeja(bandeja.id, 'view')}>
+                <Button title="Ver Detalles" size="sm" className="bg-pastel-yellow hover:bg-yellow-100" onClick={() => seleccionarBandeja(bandeja.id_bandeja, 'view')}>
                     <Info className="h-4 w-4" /> Ver Detalles
                 </Button>
               </div>

@@ -5,47 +5,42 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';  
 import Combobox from '@/components/ui/combobox';  
 import { Pencil, Trash2 } from 'lucide-react';  
+import ModalError from '../modals/error';
+import { TortaDisponible, TortaEnBandeja} from '@/interfaces/bandejas';
 
-// El tipo TortaDisponible ahora viene del hook procesado
-interface TortaDisponible {
-    id_torta: number;
-    nombre: string;
-    tamanio: string;
-    porciones_receta: number; // Porciones que rinde la receta de esta torta
-    costo_por_porcion: number; // Costo pre-calculado por porción de esta torta
-}
-
-// Tipo para las tortas que se van agregando a la bandeja
-interface TortaEnBandeja {
-    id_torta: number;
-    nombre: string;
-    tamanio: string;
-    porciones: number; // Cantidad de porciones de esta torta en particular para la bandeja
-    precio: number; // Precio total de esas porciones para la bandeja
-}
-
-interface FormAgregarBandejaProps {
+export interface FormAgregarBandejaProps {
     tortasDisponibles: TortaDisponible[];  
     bandejaSeleccionada: any | null;  
     modo: 'create' | 'edit' | 'view';  
-    limpiarSeleccion: () => void;  
+    limpiarSeleccion: () => void;
+    agregarBandeja: (bandejaData: { nombre: string; precio: number | null; tamanio: string; imagen: File | null; tortas: TortaEnBandeja[] }) => Promise<any>;
+    loading: boolean;
+    error: string | null;  
 }
 
 export const FormAgregarBandeja = ({
     tortasDisponibles,  
     bandejaSeleccionada,  
     modo,  
-    limpiarSeleccion,  
+    limpiarSeleccion,
+    agregarBandeja,
+    loading,
+    error,  
 }: FormAgregarBandejaProps) => {
     // Estado local del formulario principal 
     const [nombre, setNombre] = useState('');  
     const [precio, setPrecio] = useState('');  
-    const [tamaño, setTamaño] = useState('');  
-    const [imagen, setImagen] = useState('');  
+    const [tamanio, setTamanio] = useState('');  
+    const [imagen, setImagen] = useState('');
+    const [imagenFile, setImagenFile] = useState<File | null>(null);
+    const [imagenPreview, setImagenPreview] = useState<string | null>(null);  
 
     // Estado local para la sección de agregar tortas 
     const [tortaId, setTortaId] = useState('');  
     const [porciones, setPorciones] = useState('');
+    const [editingTortaId, setEditingTortaId] = useState<number | null>(null);
+    const [tortasEnBandeja, setTortasEnBandeja] = useState<TortaEnBandeja[]>([]);  
+    
     const opcionesTorta = tortasDisponibles.map(torta => ({
         id: String(torta.id_torta),
         nombre: `${torta.nombre} ${torta.tamanio}`,
@@ -56,49 +51,53 @@ export const FormAgregarBandeja = ({
         mapNombreAId[op.nombre] = op.id;
     });  
 
-    const [editingTortaId, setEditingTortaId] = useState<number | null>(null);
-    const [tortasEnBandeja, setTortasEnBandeja] = useState<TortaEnBandeja[]>([]);  
-
-    // Estado para manejar el archivo de imagen y la previsualización del nombre 
-    const [imagenFile, setImagenFile] = useState<File | null>(null);  
-    const [imagenPreview, setImagenPreview] = useState('');  
-
     const isReadOnly = modo === 'view';  
+    const [modalError, setModalError] = useState<{ mostrar: boolean; mensaje: string }>({ mostrar: false, mensaje: '' });
 
     // Efecto para rellenar el formulario cuando se edita o ve una bandeja 
     useEffect(() => {
         if (bandejaSeleccionada && (modo === 'edit' || modo === 'view')) {  
             setNombre(bandejaSeleccionada.nombre);  
-            setPrecio(String(bandejaSeleccionada.precio));  
-            setTamaño(bandejaSeleccionada.tamaño);  
-            setImagen(bandejaSeleccionada.imagen);  
-            setTortasEnBandeja(bandejaSeleccionada.tortas);  
+            setPrecio(String(bandejaSeleccionada.precio || ''));  
+            setTamanio(bandejaSeleccionada.tamanio);  
+            setImagenPreview(bandejaSeleccionada.imagen || null);  
+            if (bandejaSeleccionada.tortas) {
+                setTortasEnBandeja(bandejaSeleccionada.tortas.map((t: any) => ({
+                    id_torta: t.id_torta,
+                    nombre: t.nombre_torta || '', // Asegúrate de que el nombre de la torta esté disponible
+                    tamanio: t.tamanio_torta || '', // Asegúrate de que el tamanio de la torta esté disponible
+                    porciones: t.porciones,
+                    precio: t.precio,
+                })));
+            }
         } else {
             handleLimpiar();  
         }
     }, [bandejaSeleccionada, modo]);  
 
     const handleImagenChange = (e: ChangeEvent<HTMLInputElement>) => {  
-        if (e.target.files && e.target.files[0]) {  
-            setImagenFile(e.target.files[0]);  
-            setImagenPreview(e.target.files[0].name); // Mostrar nombre del archivo 
-        } else {  
-            setImagenFile(null);  
-            setImagenPreview('');  
+       const file = e.target.files ? e.target.files[0] : null;
+        setImagenFile(file);
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagenPreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            setImagenPreview(null);
         }
     };
 
     const handleAgregarTorta = () => {  
-        if (!tortaId || !porciones) {
-            return;
-        }
+        if (!tortaId || !porciones) return;
 
         const tortaSeleccionada = tortasDisponibles.find(t => String(t.id_torta) === tortaId);
 
         if (tortaSeleccionada) {
             const cantidadPorciones = parseInt(porciones);
             if (isNaN(cantidadPorciones) || cantidadPorciones <= 0) {
-                alert("Por favor, introduce una cantidad válida de porciones.");
+                setModalError({ mostrar: true, mensaje: 'Por favor, introduce una cantidad válida de porciones.' });
                 return;
             }
 
@@ -122,7 +121,7 @@ export const FormAgregarBandeja = ({
                 // Modo agregar: Añadir una nueva torta
                 const tortaExistente = tortasEnBandeja.find(t => String(t.id_torta) === tortaId);
                 if (tortaExistente) {
-                    alert('Esta torta ya ha sido agregada a la bandeja. Por favor, edítala si deseas cambiar las porciones.');
+                    setModalError({ mostrar: true, mensaje: 'Esta torta ya ha sido agregada a la bandeja. Por favor, edítala si deseas cambiar las porciones.' });
                     return;
                 }
 
@@ -165,7 +164,7 @@ export const FormAgregarBandeja = ({
     const handleLimpiar = () => { 
         setNombre(''); 
         setPrecio(''); 
-        setTamaño(''); 
+        setTamanio(''); 
         setImagen(''); 
         setTortaId(''); 
         setPorciones(''); 
@@ -176,11 +175,67 @@ export const FormAgregarBandeja = ({
         }
     };
 
-    const handleConfirmar = () => { 
-        // Lógica futura para guardar 
-        console.log('Bandeja a confirmar:', { nombre, precio, tamaño, imagen, tortas: tortasEnBandeja }); 
-        alert('Bandeja confirmada! Revisa la consola.'); 
-        handleLimpiar(); 
+    const handleConfirmar = async () => {
+        // 1. Validar nombre y tamanio no nulos
+        if (!nombre.trim()) {
+            setModalError({ mostrar: true, mensaje: 'El nombre de la bandeja es obligatorio.' });
+            return;
+        }
+        if (!tamanio.trim()) {
+           setModalError({ mostrar: true, mensaje: 'El tamanio de la bandeja es obligatorio.' });
+            return;
+        }
+        // 2. Validar que la tabla tortas en bandeja no esté vacía
+        if (tortasEnBandeja.length === 0){
+            setModalError({ mostrar: true, mensaje: 'Debes agregar tortas a la bandeja.' });
+            return;
+        }
+        // 3. Validar la cantidad de porciones total
+        const tamanioNumerico = parseFloat(tamanio.replace(/[^\d.]/g, '')); // Extraer solo números del string de tamanio
+        if (isNaN(tamanioNumerico) || tamanioNumerico <= 0) {
+            setModalError({ mostrar: true, mensaje: 'El tamanio de la bandeja debe ser un número válido (ej. "24cm").'});
+            return;
+        }
+
+        const porcionesDisponibles = tamanioNumerico * 1.5;
+        const porcionesTotal = tortasEnBandeja.reduce((sum, torta) => sum + torta.porciones, 0);
+
+        const limiteInferior = porcionesDisponibles - 5;
+        const limiteSuperior = porcionesDisponibles + 5;
+
+        if (porcionesTotal < limiteInferior || porcionesTotal > limiteSuperior) {
+             setModalError({ mostrar: true, mensaje:
+                `La cantidad total de porciones (${porcionesTotal}) no cumple con el rango requerido.\n` +
+                `Para un tamanio de ${tamanio}, las porciones disponibles estimadas son ${porcionesDisponibles.toFixed(2)}.\n` +
+                `El total debe estar entre ${limiteInferior.toFixed(2)} y ${limiteSuperior.toFixed(2)}.`
+            });
+            return;
+        }
+
+        // Si todas las validaciones pasan, enviar a la base de datos
+        try {
+            const bandejaDataToSend = {
+                nombre: nombre.trim(),
+                precio: precio ? Number(precio) : null, // Convertir a número o null
+                tamanio: tamanio.trim(),
+                imagen: imagenFile, // Multer en el backend espera el objeto File
+                tortas: tortasEnBandeja.map(torta => ({
+                    id_torta: torta.id_torta,
+                    nombre: torta.nombre,    
+                    tamanio: torta.tamanio,  
+                    porciones: torta.porciones,
+                    precio: torta.precio,
+                })),
+            };
+
+            await agregarBandeja(bandejaDataToSend); // Llama a la función del hook
+            console.log("→ Datos a enviar:", bandejaDataToSend);
+            alert('Bandeja guardada con éxito!');
+            handleLimpiar(); // Limpiar formulario después de guardar
+        } catch (err: any) {
+            console.error("→ Error capturado en handleConfirmar:", err);
+            alert(`Error al guardar la bandeja: ${err.message || 'Error desconocido'}`);
+        }
     };
 
     const titulo = modo === 'edit' ? 'Editar Bandeja' : modo === 'view' ? 'Detalles de la Bandeja' : 'Agregar Bandeja'; 
@@ -201,8 +256,8 @@ export const FormAgregarBandeja = ({
                     <Input placeholder="Ej: 50000" type="number" value={precio} onChange={(e) => setPrecio(e.target.value)} readOnly={isReadOnly} />             
                     </div>
                 <div> 
-                    <label className="text-sm font-medium">Tamaño</label> 
-                    <Input placeholder="Ej: 24cm" value={tamaño} onChange={(e) => setTamaño(e.target.value)} readOnly={isReadOnly} />             
+                    <label className="text-sm font-medium">Tamanio(diametro)</label> 
+                    <Input placeholder="Ej: 24cm" value={tamanio} onChange={(e) => setTamanio(e.target.value)} readOnly={isReadOnly} />             
                     </div>
                 <div> 
                     <label htmlFor="imagen" className="text-sm font-medium">Imagen</label>                 
@@ -280,6 +335,14 @@ export const FormAgregarBandeja = ({
                     Limpiar 
                 </Button>
             </div>
+            {modalError.mostrar && (
+                    <ModalError
+                      titulo="Ocurrió un Error"
+                      mensaje={modalError.mensaje}
+                      onClose={() => setModalError({ mostrar: false, mensaje: '' })}
+                    />
+            )}
         </div>
+        
     );
 };
