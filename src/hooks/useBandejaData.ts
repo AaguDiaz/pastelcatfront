@@ -1,9 +1,8 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { calcularCostoIngrediente } from '@/lib/calculoCostos'; 
-import { Bandeja, MateriaPrimaBackend, IngredienteRecetaBackend, RecetaBackend, TortaBackend, TortaDisponible, TortaEnBandeja } from '@/interfaces/bandejas'; 
-
+import { Bandeja, TortaBackend, TortaDisponible, TortaEnBandeja } from '@/interfaces/bandejas'; 
 
 const API_BASE_URL = 'http://localhost:5000'; //'https://pastelcatback.onrender.com'; // 
 
@@ -14,7 +13,40 @@ export const useBandejaData = () => {
     const [modo, setModo] = useState<'create' | 'edit' | 'view'>('create');
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [searchTerm, setSearchTerm] = useState('');
     const router = useRouter();
+
+    const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
+        const token = localStorage.getItem('token');
+        const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+        ...(token && { Authorization: `Bearer ${token}` }),
+        };
+
+        const response = await fetch(url, { ...options, headers });
+
+        if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('token');
+        window.location.href = '/login'; 
+        throw new Error('No autorizado');
+        }
+
+        if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${errorText}`);
+        }
+        
+        // Si la respuesta no tiene contenido (ej. en un DELETE), devolvemos un objeto vacío
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            return response.json();
+        }
+        return {};
+
+    }, []);
 
     const fetchTortasYCalcularCostos = async () => {
             try {
@@ -117,17 +149,12 @@ export const useBandejaData = () => {
                 formData.append('precio', String(bandejaData.precio));
             }
             if (bandejaData.imagen) {
-                formData.append('imagen', bandejaData.imagen); // Adjuntar el objeto File directamente
+                formData.append('imagen', bandejaData.imagen);
             }
-            // Las tortas se envían como un string JSON para que el backend lo parsee
             formData.append('tortas', JSON.stringify(bandejaData.tortas));
 
-            formData.forEach((value, key) => {
-                console.log(`→ FormData: ${key}`, value);
-            });
 
-
-            const response = await fetch(`${API_BASE_URL}/bandejas`, { // Nueva ruta POST /bandejas
+            const response = await fetch(`${API_BASE_URL}/bandejas`, {
                 method: 'POST',
                 headers: {
                     ...(token && { Authorization: `Bearer ${token}` }),
@@ -135,36 +162,157 @@ export const useBandejaData = () => {
                 body: formData,
             });
 
-            console.log("→ Response status:", response.status);
-            const text = await response.text();
-            console.log("→ Respuesta texto crudo:", text);
+            const rawText = await response.text();
 
-            if (!response.ok) {
-                if (response.status === 401 || response.status === 403) {
-                    localStorage.removeItem('token');
-                    router.push('/login');
-                }
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Error al guardar la bandeja.');
+            let data: any;
+            try {
+                data = JSON.parse(rawText);
+            } catch {
+                 data = null;
             }
 
-            const nuevaBandeja: Bandeja = await response.json(); // Casteamos a la interfaz Bandeja
-            console.log('Bandeja guardada con éxito:', nuevaBandeja);
-            // Si gestionas el estado de todas las bandejas aquí, podrías añadirla
-            setBandejas(prevBandejas => [...prevBandejas, nuevaBandeja]); // Actualiza el estado de bandejas
-            return nuevaBandeja;
+            if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem('token');
+                router.push('/login');
+            }
+            throw new Error(data?.message || 'Error al guardar la bandeja.');
+            }
+
+            console.log('Bandeja guardada con éxito:', data);
+            setBandejas(prevBandejas => [...prevBandejas, data]);
+            return data;
+
         } catch (err: any) {
             console.error("→ Error atrapado en agregarBandeja:", err);
             setError(err.message || 'Error desconocido al agregar bandeja.');
-            throw err; // Re-lanza el error para que el componente pueda manejarlo
+            throw err;
         } finally {
             setLoading(false);
+        }
+        };
+    // --- OBTENER BANDEJAS (CON PAGINACIÓN Y BÚSQUEDA) ---
+    const fetchBandejas = useCallback(async (page: number, search: string, loadMore = false) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE_URL}/bandejas?page=${page}&search=${search}`, {
+                    headers: {
+                        ...(token && { Authorization: `Bearer ${token}` }),
+                       'Content-Type': 'application/json',
+                    }
+                });
+                if (response.status === 404) {
+                    return null;
+                }
+                if (!response.ok) {
+                   if (response.status === 401 || response.status === 403) {
+                        localStorage.removeItem('token');
+                        router.push('/login');
+                        return null;
+                    }       
+                    let errorMessage = 'Error al obtenerla bandeja';
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.message || errorData.error || errorMessage;
+                    } catch { /* No hacer nada si el cuerpo no es JSON */ }
+                         throw new Error(errorMessage);
+                }
+        
+        if (!response.ok) throw new Error('Error al obtener las bandejas.');
+        
+        const result = await response.json();
+        
+        // Si es "Cargar Más", añade los resultados. Si no, reemplaza.
+        setBandejas(loadMore ? [...bandejas, ...result.data] : result.data);
+        setCurrentPage(result.currentPage);
+        setTotalPages(result.totalPages);
+
+        } catch (err: any) {
+        setError(err.message);
+        } finally {
+        setLoading(false);
+        }
+    }, [bandejas]); // Dependencia 'bandejas' para el 'loadMore'
+
+    const handleSearch = (term: string) => {
+        setSearchTerm(term);
+        fetchBandejas(1, term, false); // Siempre busca desde la página 1
+    };
+    
+    const handleLoadMore = () => {
+        if (currentPage < totalPages) {
+        fetchBandejas(currentPage + 1, searchTerm, true);
+        }
+    };
+
+    const updateBandeja = async (bandejaId: number, data: FormData) => {
+        setLoading(true);
+        setError(null);
+        try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            router.push('/login');
+            throw new Error('No autenticado. Por favor, inicia sesión.');
+        }
+
+        const response = await fetch(`${API_BASE_URL}/bandejas/${bandejaId}`, {
+            method: 'PUT',
+            headers: {
+                ...(token && { Authorization: `Bearer ${token}` }),
+            },
+            body: data, // Con FormData, el navegador pone el Content-Type correcto
+        });
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.message || 'Error al actualizar la bandeja.');
+        }
+        const bandejaActualizada = await response.json();
+        
+        // Actualiza el estado local para reflejar el cambio en la UI al instante
+        setBandejas(bandejas.map(b => (b.id_bandeja === bandejaId ? bandejaActualizada : b)));
+
+        } catch (err: any) {
+        setError(err.message);
+        throw err; // Re-lanzar para que el formulario lo pueda atrapar
+        } finally {
+        setLoading(false);
+        }
+    };
+  
+    const deleteBandeja = async (bandejaId: number) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const token = localStorage.getItem('token');
+        if (!token) {
+            router.push('/login');
+            throw new Error('No autenticado. Por favor, inicia sesión.');
+        }
+        const response = await fetch(`${API_BASE_URL}/bandejas/${bandejaId}`, {
+            method: 'DELETE',
+            headers: {
+                ...(token && { Authorization: `Bearer ${token}` }),
+                'Content-Type': 'application/json',
+            }
+        });
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.message || 'Error al eliminar la bandeja.');
+        }
+        // Actualiza el estado local eliminando la bandeja
+        setBandejas(bandejas.filter(b => b.id_bandeja !== bandejaId));
+        } catch (err: any) {
+        setError(err.message);
+        } finally {
+        setLoading(false);
         }
     };
 
     useEffect(() => {
         fetchTortasYCalcularCostos();
-
+        fetchBandejas(1, '');
     }, []); // El efecto se ejecuta una sola vez al montar el componente
 
     const seleccionarBandeja = (id: number, newMode: 'edit' | 'view') => {
@@ -191,5 +339,12 @@ export const useBandejaData = () => {
         agregarBandeja,
         loading,
         error,
+        fetchBandejas,
+        handleSearch,
+        handleLoadMore,
+        updateBandeja,
+        deleteBandeja,
+        currentPage,
+        totalPages
     };
 };

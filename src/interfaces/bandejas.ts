@@ -4,6 +4,21 @@ export interface Bandeja {
     precio: number | null; // Puede ser null
     tamanio: string;
     imagen: string | null; // URL de la imagen en Supabase Storage
+    bandeja_tortas: BandejaTorta[];
+}
+
+export interface TortaAnidada {
+  nombre: string;
+  tamanio: string;
+}
+
+// Esta representa cada objeto en el array 'bandeja_tortas'
+export interface BandejaTorta {
+  id_bandeja_tortas: number;
+  id_torta: number;
+  porciones: number;
+  precio: number;
+  torta: TortaAnidada; // Aquí usamos la interfaz anidada
 }
 
 // El tipo TortaDisponible ahora viene del hook procesado

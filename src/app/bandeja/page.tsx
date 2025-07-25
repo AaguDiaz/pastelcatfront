@@ -1,24 +1,28 @@
-// src/app/bandejas/page.tsx
 'use client';
 
 import { useBandejaData } from "@/hooks/useBandejaData";
 import { FormAgregarBandeja } from "@/components/forms/FormAddEditBandeja";
 import { FormTablaBandeja } from "@/components/forms/FormTarjetasBandejas";
-import { TortaEnBandeja } from "@/interfaces/bandejas";
 
 const PageBandejas = () => {
-  // Se llama al hook una sola vez para compartir el estado
+  // Destructura TODAS las nuevas funciones y estados del hook
   const {
     bandejas,
     tortasDisponibles,
     bandejaSeleccionada,
     modo,
+    loading,
+    error,
+    currentPage,
+    totalPages,
     seleccionarBandeja,
     limpiarSeleccion,
     agregarBandeja,
-    loading,
-    error
-    } = useBandejaData();
+    updateBandeja, // <-- Función nueva para el formulario
+    deleteBandeja, // <-- Función nueva para la tabla
+    handleSearch,  // <-- Función nueva para la tabla
+    handleLoadMore // <-- Función nueva para la tabla
+  } = useBandejaData();
 
   return (
     <main className="p-6">
@@ -34,13 +38,21 @@ const PageBandejas = () => {
             modo={modo}
             limpiarSeleccion={limpiarSeleccion}
             agregarBandeja={agregarBandeja}
+            updateBandeja={updateBandeja} 
             loading={loading}
             error={error}
           />
+          
         {/* Tabla/Tarjetas de Bandejas */}
         <FormTablaBandeja
-          bandejas={bandejas}
-          seleccionarBandeja={seleccionarBandeja}
+            bandejas={bandejas}
+            loading={loading}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            handleSearch={handleSearch}
+            handleLoadMore={handleLoadMore}
+            deleteBandeja={deleteBandeja}
+            seleccionarBandeja={seleccionarBandeja}
         />
       </div>
     </main>

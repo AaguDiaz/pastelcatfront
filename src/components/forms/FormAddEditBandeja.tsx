@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import Combobox from '@/components/ui/combobox';  
 import { Pencil, Trash2 } from 'lucide-react';  
 import ModalError from '../modals/error';
-import { TortaDisponible, TortaEnBandeja} from '@/interfaces/bandejas';
+import ModalExito from '../modals/exito';
+import { BandejaTorta, TortaDisponible, TortaEnBandeja} from '@/interfaces/bandejas';
 
 export interface FormAgregarBandejaProps {
     tortasDisponibles: TortaDisponible[];  
@@ -14,6 +15,7 @@ export interface FormAgregarBandejaProps {
     modo: 'create' | 'edit' | 'view';  
     limpiarSeleccion: () => void;
     agregarBandeja: (bandejaData: { nombre: string; precio: number | null; tamanio: string; imagen: File | null; tortas: TortaEnBandeja[] }) => Promise<any>;
+    updateBandeja: (id: number, bandejaData: FormData) => Promise<any>;
     loading: boolean;
     error: string | null;  
 }
@@ -24,8 +26,7 @@ export const FormAgregarBandeja = ({
     modo,  
     limpiarSeleccion,
     agregarBandeja,
-    loading,
-    error,  
+    updateBandeja,  
 }: FormAgregarBandejaProps) => {
     // Estado local del formulario principal 
     const [nombre, setNombre] = useState('');  
@@ -53,29 +54,37 @@ export const FormAgregarBandeja = ({
 
     const isReadOnly = modo === 'view';  
     const [modalError, setModalError] = useState<{ mostrar: boolean; mensaje: string }>({ mostrar: false, mensaje: '' });
+    const [modalExito, setModalExito] = useState<{ mostrar: boolean }>({ mostrar: false });
+    const [modalEliminar, setModalEliminar] = useState<{ mostrar: boolean; id: number | null }>({ mostrar: false, id: null });
 
     // Efecto para rellenar el formulario cuando se edita o ve una bandeja 
     useEffect(() => {
-        if (bandejaSeleccionada && (modo === 'edit' || modo === 'view')) {  
-            setNombre(bandejaSeleccionada.nombre);  
-            setPrecio(String(bandejaSeleccionada.precio || ''));  
-            setTamanio(bandejaSeleccionada.tamanio);  
-            setImagenPreview(bandejaSeleccionada.imagen || null);  
-            if (bandejaSeleccionada.tortas) {
-                setTortasEnBandeja(bandejaSeleccionada.tortas.map((t: any) => ({
-                    id_torta: t.id_torta,
-                    nombre: t.nombre_torta || '', // Asegúrate de que el nombre de la torta esté disponible
-                    tamanio: t.tamanio_torta || '', // Asegúrate de que el tamanio de la torta esté disponible
-                    porciones: t.porciones,
-                    precio: t.precio,
-                })));
+        if (bandejaSeleccionada && (modo === 'edit' || modo === 'view')) {
+            setNombre(bandejaSeleccionada.nombre);
+            setPrecio(String(bandejaSeleccionada.precio || ''));
+            setTamanio(bandejaSeleccionada.tamanio);
+            setImagenPreview(bandejaSeleccionada.imagen || null);
+            setImagenFile(null);
+
+            if (bandejaSeleccionada.bandeja_tortas && Array.isArray(bandejaSeleccionada.bandeja_tortas)) {
+                const tortasMapeadas = bandejaSeleccionada.bandeja_tortas.map((bt: BandejaTorta) => ({
+                    id_torta: bt.id_torta,
+                    nombre: bt.torta.nombre,
+                    tamanio: bt.torta.tamanio,
+                    porciones: bt.porciones,
+                    precio: bt.precio,
+            }));
+            
+            setTortasEnBandeja(tortasMapeadas);
+            } else {
+            setTortasEnBandeja([]);
             }
         } else {
-            handleLimpiar();  
+            handleLimpiar();
         }
-    }, [bandejaSeleccionada, modo]);  
+        }, [bandejaSeleccionada, modo]);
 
-    const handleImagenChange = (e: ChangeEvent<HTMLInputElement>) => {  
+    const handleImagenChange = (e: ChangeEvent<HTMLInputElement>) => {
        const file = e.target.files ? e.target.files[0] : null;
         setImagenFile(file);
         if (file) {
@@ -211,7 +220,6 @@ export const FormAgregarBandeja = ({
             });
             return;
         }
-
         // Si todas las validaciones pasan, enviar a la base de datos
         try {
             const bandejaDataToSend = {
@@ -228,13 +236,36 @@ export const FormAgregarBandeja = ({
                 })),
             };
 
-            await agregarBandeja(bandejaDataToSend); // Llama a la función del hook
-            console.log("→ Datos a enviar:", bandejaDataToSend);
-            alert('Bandeja guardada con éxito!');
-            handleLimpiar(); // Limpiar formulario después de guardar
+            if (modo === 'edit' && bandejaSeleccionada) {
+                const formData = new FormData();
+                formData.append('nombre', bandejaDataToSend.nombre);
+                formData.append('tamanio', bandejaDataToSend.tamanio);
+                if (bandejaDataToSend.precio !== null) {
+                    formData.append('precio', String(bandejaDataToSend.precio));
+                }
+                if (bandejaDataToSend.imagen) {
+                    formData.append('imagen', bandejaDataToSend.imagen);
+                }
+                formData.append('tortas', JSON.stringify(bandejaDataToSend.tortas));
+
+                await updateBandeja(bandejaSeleccionada.id_bandeja, formData);
+                  setModalExito({
+                        mostrar: true
+                    });
+                } else {
+                await agregarBandeja(bandejaDataToSend);
+                setModalExito({
+                    mostrar: true
+                });
+            }
+
+    handleLimpiar();
         } catch (err: any) {
             console.error("→ Error capturado en handleConfirmar:", err);
-            alert(`Error al guardar la bandeja: ${err.message || 'Error desconocido'}`);
+            setModalError({
+                mostrar: true,
+                mensaje: `Error al guardar la bandeja: ${err.message || 'Error desconocido'}`
+            });
         }
     };
 
@@ -342,6 +373,14 @@ export const FormAgregarBandeja = ({
                       onClose={() => setModalError({ mostrar: false, mensaje: '' })}
                     />
             )}
+            {modalExito.mostrar && (
+                <ModalExito
+                    titulo="Éxito"
+                    mensaje="La bandeja se ha actualizado correctamente."
+                    onClose={() => setModalExito({ mostrar: false })}
+                />
+            )}
+            
         </div>
         
     );
