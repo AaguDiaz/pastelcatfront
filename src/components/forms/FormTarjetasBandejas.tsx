@@ -23,8 +23,7 @@ export const FormTablaBandeja = ({
   bandejas, seleccionarBandeja, loading, currentPage, totalPages, handleSearch, handleLoadMore, deleteBandeja 
 }: FormTablaBandejaProps) => {
 
-  const [visibleCount, setVisibleCount] = useState(8); // Mostrar 8 bandejas inicialmente
-  const [filtroNombre, setFiltroNombre] = useState('');
+  const [visibleCount] = useState(8); // Mostrar 8 bandejas inicialmente
   const [searchTerm, setSearchTerm] = useState('');
   const canLoadMore = currentPage < totalPages;
 
@@ -35,14 +34,6 @@ export const FormTablaBandeja = ({
 
     return () => clearTimeout(timer);
   }, [searchTerm, handleSearch]);
-
-  const handleVerMas = () => {
-    setVisibleCount(prevCount => prevCount + 8); // Cargar 8 más
-  };
-
-  const bandejasFiltradas = bandejas.filter(bandeja =>
-    bandeja.nombre.toLowerCase().includes(filtroNombre.toLowerCase())
-  );
 
   const handleDeleteClick = (id: number, nombre: string) => {
     if (window.confirm(`¿Estás seguro de que quieres eliminar la bandeja "${nombre}"?`)) {

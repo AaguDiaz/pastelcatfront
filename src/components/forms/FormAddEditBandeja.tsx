@@ -1,21 +1,21 @@
 // src/app/bandejas/components/FormAgregarBandeja.tsx
 'use client';
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect, ChangeEvent, useCallback } from 'react';
 import { Input } from '@/components/ui/input';  
 import { Button } from '@/components/ui/button';  
 import Combobox from '@/components/ui/combobox';  
 import { Pencil, Trash2 } from 'lucide-react';  
 import ModalError from '../modals/error';
 import ModalExito from '../modals/exito';
-import { BandejaTorta, TortaDisponible, TortaEnBandeja} from '@/interfaces/bandejas';
+import { Bandeja, BandejaTorta, TortaDisponible, TortaEnBandeja} from '@/interfaces/bandejas';
 
 export interface FormAgregarBandejaProps {
     tortasDisponibles: TortaDisponible[];  
-    bandejaSeleccionada: any | null;  
+    bandejaSeleccionada: Bandeja | null;  
     modo: 'create' | 'edit' | 'view';  
     limpiarSeleccion: () => void;
-    agregarBandeja: (bandejaData: { nombre: string; precio: number | null; tamanio: string; imagen: File | null; tortas: TortaEnBandeja[] }) => Promise<any>;
-    updateBandeja: (id: number, bandejaData: FormData) => Promise<any>;
+    agregarBandeja: (bandejaData: { nombre: string; precio: number | null; tamanio: string; imagen: File | null; tortas: TortaEnBandeja[] }) => Promise<boolean>;
+    updateBandeja: (id: number, bandejaData: FormData) => Promise<void>;
     loading: boolean;
     error: string | null;  
 }
@@ -32,7 +32,6 @@ export const FormAgregarBandeja = ({
     const [nombre, setNombre] = useState('');  
     const [precio, setPrecio] = useState('');  
     const [tamanio, setTamanio] = useState('');  
-    const [imagen, setImagen] = useState('');
     const [imagenFile, setImagenFile] = useState<File | null>(null);
     const [imagenPreview, setImagenPreview] = useState<string | null>(null);  
 
@@ -55,7 +54,6 @@ export const FormAgregarBandeja = ({
     const isReadOnly = modo === 'view';  
     const [modalError, setModalError] = useState<{ mostrar: boolean; mensaje: string }>({ mostrar: false, mensaje: '' });
     const [modalExito, setModalExito] = useState<{ mostrar: boolean }>({ mostrar: false });
-    const [modalEliminar, setModalEliminar] = useState<{ mostrar: boolean; id: number | null }>({ mostrar: false, id: null });
 
     // Efecto para rellenar el formulario cuando se edita o ve una bandeja 
     useEffect(() => {
@@ -82,7 +80,7 @@ export const FormAgregarBandeja = ({
         } else {
             handleLimpiar();
         }
-        }, [bandejaSeleccionada, modo]);
+    }, [bandejaSeleccionada, modo, ]);
 
     const handleImagenChange = (e: ChangeEvent<HTMLInputElement>) => {
        const file = e.target.files ? e.target.files[0] : null;
@@ -170,11 +168,12 @@ export const FormAgregarBandeja = ({
         } 
     };
 
-    const handleLimpiar = () => { 
+    const handleLimpiar = useCallback(() => { 
         setNombre(''); 
         setPrecio(''); 
-        setTamanio(''); 
-        setImagen(''); 
+        setTamanio('');
+        setImagenPreview(null);
+        setImagenFile(null);  
         setTortaId(''); 
         setPorciones(''); 
         setTortasEnBandeja([]); 
@@ -182,7 +181,7 @@ export const FormAgregarBandeja = ({
         if (modo !== 'create') { 
             limpiarSeleccion(); 
         }
-    };
+    }, [modo, limpiarSeleccion]);
 
     const handleConfirmar = async () => {
         // 1. Validar nombre y tamanio no nulos
@@ -260,11 +259,11 @@ export const FormAgregarBandeja = ({
             }
 
     handleLimpiar();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("→ Error capturado en handleConfirmar:", err);
             setModalError({
                 mostrar: true,
-                mensaje: `Error al guardar la bandeja: ${err.message || 'Error desconocido'}`
+                mensaje: `Error al guardar la bandeja: ${err instanceof Error ? err.message : 'Error desconocido'}`
             });
         }
     };

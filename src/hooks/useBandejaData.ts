@@ -132,65 +132,6 @@ export const useBandejaData = () => {
             }
         };
 
-    const agregarBandeja = async (bandejaData: { nombre: string; precio: number | null; tamanio: string; imagen: File | null; tortas: TortaEnBandeja[] }) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                router.push('/login');
-                throw new Error('No autenticado. Por favor, inicia sesión.');
-            }
-
-            const formData = new FormData();
-            formData.append('nombre', bandejaData.nombre);
-            formData.append('tamanio', bandejaData.tamanio);
-            if (bandejaData.precio !== null) {
-                formData.append('precio', String(bandejaData.precio));
-            }
-            if (bandejaData.imagen) {
-                formData.append('imagen', bandejaData.imagen);
-            }
-            formData.append('tortas', JSON.stringify(bandejaData.tortas));
-
-
-            const response = await fetch(`${API_BASE_URL}/bandejas`, {
-                method: 'POST',
-                headers: {
-                    ...(token && { Authorization: `Bearer ${token}` }),
-                },
-                body: formData,
-            });
-
-            const rawText = await response.text();
-
-            let data: any;
-            try {
-                data = JSON.parse(rawText);
-            } catch {
-                 data = null;
-            }
-
-            if (!response.ok) {
-            if (response.status === 401 || response.status === 403) {
-                localStorage.removeItem('token');
-                router.push('/login');
-            }
-            throw new Error(data?.message || 'Error al guardar la bandeja.');
-            }
-
-            console.log('Bandeja guardada con éxito:', data);
-            setBandejas(prevBandejas => [...prevBandejas, data]);
-            return data;
-
-        } catch (err: any) {
-            console.error("→ Error atrapado en agregarBandeja:", err);
-            setError(err.message || 'Error desconocido al agregar bandeja.');
-            throw err;
-        } finally {
-            setLoading(false);
-        }
-        };
     // --- OBTENER BANDEJAS (CON PAGINACIÓN Y BÚSQUEDA) ---
     const fetchBandejas = useCallback(async (page: number, search: string, loadMore = false) => {
         setLoading(true);
@@ -229,12 +170,53 @@ export const useBandejaData = () => {
         setCurrentPage(result.currentPage);
         setTotalPages(result.totalPages);
 
-        } catch (err: any) {
-        setError(err.message);
+        } catch (err: unknown) {
+        setError((err as Error).message);
         } finally {
         setLoading(false);
         }
     }, [bandejas]); // Dependencia 'bandejas' para el 'loadMore'
+
+     const agregarBandeja = useCallback(async (bandejaData: { nombre: string; precio: number | null; tamanio: string; imagen: File | null; tortas: TortaEnBandeja[] }) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const formData = new FormData();
+            formData.append('nombre', bandejaData.nombre);
+            formData.append('precio', String(bandejaData.precio || ''));
+            formData.append('tamanio', bandejaData.tamanio);
+            if (bandejaData.imagen) {
+                formData.append('imagen', bandejaData.imagen);
+            }
+            formData.append('tortas', JSON.stringify(bandejaData.tortas));
+
+            const response = await fetchWithAuth(`${API_BASE_URL}/bandejas`, {
+                method: 'POST',
+                body: formData,
+                headers: {} // No Content-Type aquí, FormData lo maneja automáticamente
+            });
+            // No necesitamos el JSON de respuesta aquí, solo la confirmación de éxito.
+            // Si la API devuelve algo útil, puedes parsearlo:
+            // const data = await response.json();
+            // console.log("Bandeja agregada con éxito:", data);
+
+            // Refrescar las bandejas después de agregar
+            await fetchBandejas(1, '');
+            setLoading(false);
+            return true; // Indica éxito
+        } catch (err: unknown) {
+            console.error("→ Error atrapado en agregarBandeja:", err);
+            let errorMessage = 'Error desconocido al agregar bandeja.';
+            if (err instanceof Error) {
+                errorMessage = err.message;
+            } else {
+                errorMessage = String(err);
+            }
+            setError(errorMessage);
+            setLoading(false);
+            throw new Error(errorMessage); // Re-lanzar el error para que el componente que llama pueda manejarlo
+        }
+    }, [fetchWithAuth, fetchBandejas]);
 
     const handleSearch = (term: string) => {
         setSearchTerm(term);
@@ -273,8 +255,8 @@ export const useBandejaData = () => {
         // Actualiza el estado local para reflejar el cambio en la UI al instante
         setBandejas(bandejas.map(b => (b.id_bandeja === bandejaId ? bandejaActualizada : b)));
 
-        } catch (err: any) {
-        setError(err.message);
+        } catch (err: unknown) {
+        setError((err as Error).message);
         throw err; // Re-lanzar para que el formulario lo pueda atrapar
         } finally {
         setLoading(false);
@@ -303,8 +285,8 @@ export const useBandejaData = () => {
         }
         // Actualiza el estado local eliminando la bandeja
         setBandejas(bandejas.filter(b => b.id_bandeja !== bandejaId));
-        } catch (err: any) {
-        setError(err.message);
+        } catch (err: unknown) {
+        setError((err as Error).message);
         } finally {
         setLoading(false);
         }
@@ -313,7 +295,7 @@ export const useBandejaData = () => {
     useEffect(() => {
         fetchTortasYCalcularCostos();
         fetchBandejas(1, '');
-    }, []); // El efecto se ejecuta una sola vez al montar el componente
+    }, [fetchTortasYCalcularCostos, fetchBandejas]); // El efecto se ejecuta una sola vez al montar el componente
 
     const seleccionarBandeja = (id: number, newMode: 'edit' | 'view') => {
         const bandeja = bandejas.find(b => b.id_bandeja === id);
