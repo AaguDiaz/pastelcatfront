@@ -3,7 +3,7 @@ import { TortaSelect } from '@/interfaces/tortas';
 import { Ingrediente,Receta ,RecetaPayload } from '@/interfaces/recetas'; 
 import { ApiTorta,ApiIngrediente,ApiReceta,ApiRecetaIngrediente } from '@/interfaces/api'; // Asegúrate de que Api esté definido correctamente
 
-const API_BASE_URL = 'https://pastelcatback.onrender.com'; // 'http://localhost:5000'; //'https://pastelcatback.onrender.com';
+const API_BASE_URL = 'https://pastelcatback.onrender.com'; //'http://localhost:5000'; //'https://pastelcatback.onrender.com'; 
 
 type ModalState = {
   mostrar: boolean;

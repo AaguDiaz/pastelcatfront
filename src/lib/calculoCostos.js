@@ -18,7 +18,7 @@ const conversiones = {
   },
 };
 
-function normalizarUnidad(cantidad, unidad) {
+export function normalizarUnidad(cantidad, unidad) {
   const unidadNormalizada = unidad.toLowerCase().replace('.', '');
   
   if (typeof unidad !== 'string' || !unidad) {
