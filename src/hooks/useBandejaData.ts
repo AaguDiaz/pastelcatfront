@@ -197,8 +197,8 @@ export const useBandejaData = () => {
             });
             // No necesitamos el JSON de respuesta aquí, solo la confirmación de éxito.
             // Si la API devuelve algo útil, puedes parsearlo:
-            // const data = await response.json();
-            // console.log("Bandeja agregada con éxito:", data);
+            const data = await response.json();
+            console.log("Bandeja agregada con éxito:", data);
 
             // Refrescar las bandejas después de agregar
             await fetchBandejas(1, '');
