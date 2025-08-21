@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { calcularCostoIngrediente } from '@/lib/calculoCostos'; 
 import { Bandeja, TortaBackend, TortaDisponible, TortaEnBandeja } from '@/interfaces/bandejas'; 
 
-const API_BASE_URL = 'https://pastelcatback.onrender.com'; // 'http://localhost:5000'; //
+const API_BASE_URL = 'http://localhost:5000'; //'https://pastelcatback.onrender.com'; // 
 
 export const useBandejaData = () => {
     const [bandejas, setBandejas] = useState<Bandeja[]>([]);
@@ -153,7 +153,7 @@ export const useBandejaData = () => {
                         router.push('/login');
                         return null;
                     }       
-                    let errorMessage = 'Error al obtenerla bandeja';
+                    let errorMessage = 'Error al obtener la bandeja';
                     try {
                         const errorData = await response.json();
                         errorMessage = errorData.message || errorData.error || errorMessage;
