@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { TortaSelect } from '@/interfaces/tortas';
 import { Ingrediente,Receta ,RecetaPayload } from '@/interfaces/recetas'; 
-import { ApiTorta,ApiIngrediente,ApiReceta,ApiRecetaIngrediente } from '@/interfaces/api'; // Asegúrate de que Api esté definido correctamente
+import { ApiTorta,ApiIngrediente,ApiReceta,ApiRecetaIngrediente } from '@/interfaces/api'; 
+import {api} from '@/lib/api';
 
-const API_BASE_URL = 'https://pastelcatback.onrender.com'; //'http://localhost:5000'; //'https://pastelcatback.onrender.com'; 
+const API_BASE_URL = api;
 
 type ModalState = {
   mostrar: boolean;

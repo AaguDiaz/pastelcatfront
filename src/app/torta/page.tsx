@@ -9,6 +9,7 @@ import { Trash2, Pencil, Info, Loader2 } from 'lucide-react';
 import { Torta } from '@/interfaces/tortas';
 import EliminarModal from '@/components/modals/eliminar';
 import Detallestorta from '@/components/modals/detallestorta';
+import ModalError from '@/components/modals/error';
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -29,6 +30,7 @@ export default function TortasPage(): JSX.Element {
   const [editingTorta, setEditingTorta] = useState<Torta | null>(null);
   const [tortaToDelete, setTortaToDelete] = useState<Torta | null>(null);
   const [tortaDetails, setTortaDetails] = useState<Torta | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const {
     tortas: displayedTortas, // El hook ahora devuelve el array acumulado
@@ -74,7 +76,7 @@ export default function TortasPage(): JSX.Element {
   const handleFormSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!nombreTorta || !precioTorta || !tamanioTorta) {
-      alert('Por favor, completa todos los campos obligatorios: Nombre, Precio y Tamaño.');
+      setErrorMsg('Por favor, completa todos los campos obligatorios: Nombre, Precio y Tamaño.');
       return;
     }
 
@@ -235,6 +237,13 @@ export default function TortasPage(): JSX.Element {
           torta={tortaDetails}
           onClose={() => setTortaDetails(null)}
           fetchRecetaDetails={fetchRecetaDetails}
+        />
+      )}
+      {errorMsg && (
+        <ModalError
+          titulo="Error"
+          mensaje={errorMsg}
+          onClose={() => setErrorMsg(null)}
         />
       )}
     </div>

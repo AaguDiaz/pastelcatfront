@@ -13,11 +13,9 @@ export async function debugFetch(url: string, options: RequestInit = {}) {
   try {
     const response = await fetch(url, options);
     const clone = response.clone();
-    let body: string | undefined;
     try {
-      body = await clone.text();
+      await clone.text();
     } catch {
-      body = undefined;
     }
     return response;
   } catch (error) {

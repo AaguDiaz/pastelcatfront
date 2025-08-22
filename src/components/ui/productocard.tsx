@@ -7,9 +7,10 @@ import { Producto } from '@/interfaces/pedidos';
 interface ProductCardProps {
   producto: Producto;
   onAdd: (p: Producto) => void;
+  onDetails?: (p: Producto) => void;
 }
 
-export default function ProductCard({ producto, onAdd }: ProductCardProps) {
+export default function ProductCard({ producto, onAdd, onDetails }: ProductCardProps) {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
       <div className="relative w-full h-64 md:h-50">
@@ -32,7 +33,7 @@ export default function ProductCard({ producto, onAdd }: ProductCardProps) {
         {producto.tamanio && (
           <p className="text-sm text-gray-500 mb-2">Tamaño: {producto.tamanio}</p>
         )}
-        <div className="mt-auto pt-3 border-t border-gray-200 flex justify-center">
+        <div className="mt-auto pt-3 border-t border-gray-200 flex justify-center gap-2">
           <Button
             size="sm"
             className="bg-pastel-blue hover:bg-blue-200"
@@ -40,6 +41,15 @@ export default function ProductCard({ producto, onAdd }: ProductCardProps) {
           >
             Agregar
           </Button>
+          {onDetails && (
+            <Button
+              size="sm"
+              className="bg-pastel-yellow hover:bg-yellow-200"
+              onClick={() => onDetails(producto)}
+            >
+              Ver detalles
+            </Button>
+          )}
         </div>
       </div>
     </div>

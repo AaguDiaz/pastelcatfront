@@ -3,8 +3,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { calcularCostoIngrediente } from '@/lib/calculoCostos'; 
 import { Bandeja, TortaBackend, TortaDisponible, TortaEnBandeja } from '@/interfaces/bandejas'; 
+import {api} from '@/lib/api'; 
 
-const API_BASE_URL = 'http://localhost:5000'; //'https://pastelcatback.onrender.com'; // 
+const API_BASE_URL = api;
 
 export const useBandejaData = () => {
     const [bandejas, setBandejas] = useState<Bandeja[]>([]);

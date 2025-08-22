@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Cliente, Producto, PedidoPayload} from '@/interfaces/pedidos';
 import { debugFetch } from '@/lib/debugFetch';
+import {api} from '@/lib/api';
 
-const API_BASE_URL = 'http://localhost:5000' //'https://pastelcatback.onrender.com';
+const API_BASE_URL = api;
 
 const usePedidoData = () => {
   const [clienteSearch, setClienteSearch] = useState('');

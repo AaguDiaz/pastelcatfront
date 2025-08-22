@@ -1,10 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Producto } from '@/interfaces/pedidos';
 import ProductCard from '../ui/productocard';
+import Detallestorta from './detallestorta';
+import {Torta} from '@/interfaces/tortas';
+import {api} from '@/lib/api';
 
 interface ProductosModalProps {
   open: boolean;
@@ -35,9 +39,44 @@ export default function ProductosModal({
     hasMore,
   onAdd,
 }: ProductosModalProps) {
+  const [detalleTorta, setDetalleTorta] = useState<Torta | null>(null);
+
+  const API_BASE_URL = api
+  const fetchRecetaDetails = async (tortaID: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/receta/detalles/torta/${tortaID}`, {
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+          'Content-Type': 'application/json',
+        },
+      });
+      if (res.status === 404) return null;
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return null;
+      }
+      if (!res.ok) throw new Error('Error al obtener detalles');
+      return res.json();
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  };
+
+  const toTorta = (p: Producto): Torta => ({
+    id_torta: p.id,
+    nombre: p.nombre,
+    precio: p.precio,
+    tamaño: p.tamanio ?? '',
+    imagen: p.imagen || null,
+  });
+
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="w-full max-w-lg sm:max-w-3xl lg:max-w-6xl bg-pastel-beige p-6 rounded-lg shadow-xl">
+    <>
+      <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+        <DialogContent className="w-full max-w-lg sm:max-w-3xl lg:max-w-6xl bg-pastel-beige p-6 rounded-lg shadow-xl">
         <DialogHeader>
           <DialogTitle>Agregar productos</DialogTitle>
         </DialogHeader>
@@ -66,7 +105,12 @@ export default function ProductosModal({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
           {productos.map((p) => (
-            <ProductCard key={`${p.tipo}-${p.id}`} producto={p} onAdd={onAdd} />
+            <ProductCard
+              key={`${p.tipo}-${p.id}`}
+              producto={p}
+              onAdd={onAdd}
+              onDetails={p.tipo === 'torta' ? (prod) => setDetalleTorta(toTorta(prod)) : undefined}
+            />
           ))}
         </div>
         <DialogFooter>
@@ -80,6 +124,14 @@ export default function ProductosModal({
           </div>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+      {detalleTorta && (
+        <Detallestorta
+          torta={detalleTorta}
+          onClose={() => setDetalleTorta(null)}
+          fetchRecetaDetails={fetchRecetaDetails}
+        />
+      )}
+    </>
   );
 }

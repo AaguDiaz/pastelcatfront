@@ -3,7 +3,10 @@
 import {useState} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-const API_BASE_URL =  'http://localhost:5000'; // 'https://pastelcatback.onrender.com'; // 
+import {api} from '@/lib/api';
+
+const API_BASE_URL =  api;
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

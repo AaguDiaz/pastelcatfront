@@ -7,6 +7,7 @@ import usePedidoData from '@/hooks/usePedidoData';
 import { Cliente, Producto, ItemPedido, PedidoPayload } from '@/interfaces/pedidos';
 import ClienteModal from '../modals/cliente';
 import ProductosModal from '../modals/producto';
+import ModalError from '../modals/error';
 
 interface AddEditPedidosProps {
   items: ItemPedido[];
@@ -50,12 +51,23 @@ export default function AddEditPedidos({
   const [fechaEntrega, setFechaEntrega] = useState('');
   const [direccionEntrega, setDireccionEntrega] = useState('');
   const [observaciones, setObservaciones] = useState('');
-  const [tipoEntrega, setTipoEntrega] = useState<'retiro'|'envio'>('retiro');
+  type TipoEntrega =
+      | ''
+      | 'retiro'
+      | 'envio_casa_cliente'
+      | 'envio_otra_direccion';
+    const [tipoEntrega, setTipoEntrega] = useState<TipoEntrega>('');
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const total = items.reduce(
     (sum, item) => sum + item.precio * item.cantidad,
     0
   );
+
+  const handleAddCliente = (c: Cliente) => {
+    setCliente(c);
+    setClienteModal(false);
+  };
 
    const handleAddProducto = (p: Producto) => {
     onAddItem(p);
@@ -63,10 +75,10 @@ export default function AddEditPedidos({
   };
 
   const handleConfirm = async () => {
-  if (!cliente) return alert('Seleccione un cliente');
-  if (!fechaEntrega) return alert('Seleccione la fecha de entrega');
-  if (!tipoEntrega) return alert('Seleccione el método de entrega');
-  if (items.length === 0) return alert('Agregue al menos un producto');
+  if (!cliente) return setErrorMsg('Seleccione un cliente');
+  if (!fechaEntrega) return setErrorMsg('Seleccione la fecha de entrega');
+  if (!tipoEntrega) return setErrorMsg('Seleccione el método de entrega');
+  if (items.length === 0) return setErrorMsg('Agregue al menos un producto');
 
    const tortas = items
       .filter((i) => i.tipo === 'torta')
@@ -87,7 +99,6 @@ export default function AddEditPedidos({
       .map((i) => {
         const id = Number(i.productoId ?? i.id);
         if (!id) {
-          console.warn('Bandeja sin id detectada', i);
         }
         return {
           id_bandeja: id,
@@ -116,7 +127,7 @@ export default function AddEditPedidos({
     setTipoEntrega('retiro');
   } catch (e) {
     console.error(e);
-    alert('Error al confirmar pedido');
+    setErrorMsg('Error al confirmar el pedido. Intente nuevamente.');
   }
 };
 
@@ -152,28 +163,37 @@ export default function AddEditPedidos({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium">
-            Dirección de entrega
-          </label>
-          <Input
-            type="text"
-            value={direccionEntrega}
-            onChange={(e) => setDireccionEntrega(e.target.value)}
-            placeholder='Ej: Calle Falsa 123, Ciudad'
-          />
-        </div>
-        <div>
           <label className="block text-sm font-medium">Método de entrega</label>
           <select
             className="w-full rounded-md border px-3 py-2 text-sm"
             value={tipoEntrega}
-            onChange={(e) => setTipoEntrega(e.target.value as 'envio'|'retiro')}
+            onChange={(e) => {
+              const val = e.target.value as TipoEntrega;
+              setTipoEntrega(val);
+              if (val !== 'envio_otra_direccion') {
+                setDireccionEntrega('');
+              }
+            }}
           >
             <option value="">Seleccionar…</option>
-            <option value="envio">Envío</option>
             <option value="retiro">Retiro</option>
+            <option value="envio_casa_cliente">Envío - Casa cliente</option>
+            <option value="envio_otra_direccion">Envío - Otra dirección</option>
           </select>
         </div>
+        {tipoEntrega === 'envio_otra_direccion' && (
+          <div>
+            <label className="block text-sm font-medium">
+              Dirección de entrega
+            </label>
+            <Input
+              type="text"
+              value={direccionEntrega}
+              onChange={(e) => setDireccionEntrega(e.target.value)}
+              placeholder='Ej: Calle Falsa 123, Ciudad'
+            />
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium">
             Observaciones
@@ -262,7 +282,7 @@ export default function AddEditPedidos({
         next={nextClientes}
         prev={prevClientes}
         hasMore={hasMoreClientes}
-        onSelect={(c) => setCliente(c)}
+        onSelect={handleAddCliente}
       />
 
       <ProductosModal
@@ -279,6 +299,13 @@ export default function AddEditPedidos({
         hasMore={hasMoreProductos}
         onAdd={handleAddProducto}
       />
+      {errorMsg && (
+        <ModalError
+          titulo="Error"
+          mensaje={errorMsg}
+          onClose={() => setErrorMsg(null)}
+        />
+      )}
     </div>
   );
 }

@@ -55,7 +55,7 @@ export default function ClienteModal({
                 <tr key={c?.id ?? `cli-${idx}`} className="border-t">
                   <td className="p-2">{c.nombre}</td>
                   <td className="p-2 text-right">
-                    <Button onClick={() => onSelect(c)}>Seleccionar</Button>
+                    <Button onClick={() => onSelect(c)} className="bg-pastel-blue hover:scale-105 transition-transform">Seleccionar</Button>
                   </td>
                 </tr>
               ))}
