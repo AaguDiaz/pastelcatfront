@@ -36,6 +36,8 @@ const usePedidoData = () => {
 
       if (!res.ok) {
         const text = await res.text();
+        const errorText = await res.text();
+        console.error('[HTTP ERROR BODY]', errorText);
         throw new Error(text || 'Error al cargar datos');
       }
 
@@ -49,7 +51,7 @@ const usePedidoData = () => {
   );
   type Tipo = 'torta' | 'bandeja';
 
-   interface RawProducto {
+ interface RawProducto {
     id?: number;
     id_torta?: number;
     id_bandeja?: number;
@@ -60,31 +62,44 @@ const usePedidoData = () => {
     tamanio?: string;
   }
 
-    const normalizeProducto = (x: RawProducto, tipo: Tipo): Producto => {
-        const rawId = x.id ?? x.id_torta ?? x.id_bandeja ?? x.id_producto;
-        return {
-            id: Number(rawId),                 // aseguro número
-            nombre: x.nombre,
-            precio: Number(x.precio),
-            imagen: x.imagen,
-            tamanio: x.tamanio,
-            tipo,                              // <- viene del filtro actual
-        };
+  const normalizeProducto = useCallback((x: RawProducto, tipo: Tipo): Producto => {
+    const rawId = x.id ?? x.id_torta ?? x.id_bandeja ?? x.id_producto;
+    return {
+      id: Number(rawId),
+      nombre: x.nombre,
+      precio: Number(x.precio),
+      imagen: x.imagen,
+      tamanio: x.tamanio,
+      tipo,
     };
+  }, []);
+
+  interface RawCliente {
+    id?: number;
+    id_cliente?: number;
+    nombre: string;
+  }
+
+  const normalizeCliente = useCallback((c: RawCliente): Cliente => ({
+    id: Number(c.id ?? c.id_cliente),
+    nombre: c.nombre,
+  }), []);
 
   const loadClientes = useCallback(async () => {
     try {
       const result = await fetchWithAuth(
         `${API_BASE_URL}/clientes?activo=true&page=${clientePage}&pageSize=10&search=${encodeURIComponent(clienteSearch)}`
       );
-      setClientes(result.data || []);
-      setHasMoreClientes(result.data.length === 10);
+      const raw = (result.data ?? []) as RawCliente[];
+      const normalized = raw.map(normalizeCliente);
+      setClientes(normalized);
+      setHasMoreClientes(raw.length === 10);
     } catch (e) {
       console.error('Error al cargar clientes', e);
       setClientes([]);
         setHasMoreClientes(false);
     }
-  }, [fetchWithAuth, clientePage, clienteSearch]);
+  }, [fetchWithAuth, clientePage, clienteSearch, normalizeCliente]);
 
   const loadProductos = useCallback(async () => {
     try {
@@ -92,7 +107,7 @@ const usePedidoData = () => {
         `${API_BASE_URL}/productos?tipo=${tipoProducto}&page=${productoPage}&pageSize=6&search=${encodeURIComponent(productoSearch)}`
         );
 
-        const raw = (result?.data ?? []) as RawProducto[];
+       const raw = (result?.data ?? []) as RawProducto[];
         const normalized: Producto[] = raw.map((x) => normalizeProducto(x, tipoProducto));
 
         setProductos(normalized);
@@ -128,6 +143,7 @@ const usePedidoData = () => {
   const confirmarPedido = useCallback(
     async (pedido: PedidoPayload) => {
       try {
+         console.log('[PEDIDOS] Enviando payload a /pedidos =>', pedido, JSON.stringify(pedido, null, 2));
         return await fetchWithAuth(`${API_BASE_URL}/pedidos`, {
           method: 'POST',
           body: JSON.stringify(pedido),

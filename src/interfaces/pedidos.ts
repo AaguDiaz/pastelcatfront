@@ -16,7 +16,8 @@ export interface Producto {
 
 export interface ItemPedido {
   key: string;
-  id: number;
+  productoId: number;
+  id?: number;
   tipo: ProductoTipo;
   nombre: string;
   precio: number;
@@ -24,14 +25,17 @@ export interface ItemPedido {
 }
 
 export interface PedidoPayload {
-  clienteId: number;
-  fechaEntrega: string;
-  direccionEntrega: string;
-  observaciones: string;
-  items: {
-    productoId: number;
+  id_cliente: number;
+  fecha_entrega: string;
+  tipo_entrega: string;
+  direccion_entrega: string | null;
+  observaciones: string | null;
+  tortas: {
+    id_torta: number;
     cantidad: number;
-    precio: number;
   }[];
-  total: number;
+  bandejas: {
+    id_bandeja: number;
+    cantidad: number;
+  }[];
 }

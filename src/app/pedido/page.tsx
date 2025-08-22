@@ -10,16 +10,19 @@ export default function PedidosPage() {
   const addItem = (product: Producto) => {
     const key = `${product.tipo}-${product.id}`;
     setItems(prev => {
-      const existing = prev.find(i => i.key === key);
-      if (existing) {
-        return prev.map(i => i.key === key ? { ...i, cantidad: i.cantidad + 1 } : i);
-      }
+      const idx = prev.findIndex(i => i.key === key);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], cantidad: next[idx].cantidad + 1 };
+        return next;
+        }
       return [
         ...prev,
         {
           key,
+          productoId: product.id,
           id: product.id,
-          tipo: product.tipo,     
+          tipo: product.tipo,
           nombre: product.nombre,
           precio: product.precio,
           cantidad: 1,
@@ -27,7 +30,7 @@ export default function PedidosPage() {
       ];
     });
   };
-
+  
   const updateQty = (key: string, qty: number) => {
     setItems(prev => prev.map(i => i.key === key ? { ...i, cantidad: qty } : i));
   };

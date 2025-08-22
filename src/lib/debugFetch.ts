@@ -10,8 +10,6 @@ export async function debugFetch(url: string, options: RequestInit = {}) {
     safeOptions.headers.Authorization = '***';
   }
 
-  console.log('fetch request', { url, ...safeOptions });
-
   try {
     const response = await fetch(url, options);
     const clone = response.clone();
@@ -21,10 +19,8 @@ export async function debugFetch(url: string, options: RequestInit = {}) {
     } catch {
       body = undefined;
     }
-    console.log('fetch response', { url, status: response.status, body });
     return response;
   } catch (error) {
-    console.error('fetch error', { url, error });
     throw error;
   }
 }

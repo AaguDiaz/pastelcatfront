@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import usePedidoData from '@/hooks/usePedidoData';
-import { Cliente, Producto, ItemPedido } from '@/interfaces/pedidos';
+import { Cliente, Producto, ItemPedido, PedidoPayload } from '@/interfaces/pedidos';
 import ClienteModal from '../modals/cliente';
 import ProductosModal from '../modals/producto';
 
@@ -50,7 +50,7 @@ export default function AddEditPedidos({
   const [fechaEntrega, setFechaEntrega] = useState('');
   const [direccionEntrega, setDireccionEntrega] = useState('');
   const [observaciones, setObservaciones] = useState('');
-  const [metodoEntrega, setMetodoEntrega] = useState<'envio'|'retiro'|''>('');
+  const [tipoEntrega, setTipoEntrega] = useState<'retiro'|'envio'>('retiro');
 
   const total = items.reduce(
     (sum, item) => sum + item.precio * item.cantidad,
@@ -65,29 +65,47 @@ export default function AddEditPedidos({
   const handleConfirm = async () => {
   if (!cliente) return alert('Seleccione un cliente');
   if (!fechaEntrega) return alert('Seleccione la fecha de entrega');
-  if (!metodoEntrega) return alert('Seleccione el método de entrega');
+  if (!tipoEntrega) return alert('Seleccione el método de entrega');
   if (items.length === 0) return alert('Agregue al menos un producto');
 
-  const fechaEntregaISO = new Date(fechaEntrega).toISOString();
+   const tortas = items
+      .filter((i) => i.tipo === 'torta')
+      .map((i) => {
+        const id = Number(i.productoId ?? i.id);
+        if (!id) {
+          console.warn('Torta sin id detectada', i);
+        }
+        return {
+          id_torta: id,
+          cantidad: i.cantidad,
+          precio_unitario: i.precio,
+        };
+      });
 
-  const tortas = items
-    .filter(i => i.tipo === 'torta')
-    .map(i => ({ id_torta: i.id, cantidad: i.cantidad }));
+    const bandejas = items
+      .filter((i) => i.tipo === 'bandeja')
+      .map((i) => {
+        const id = Number(i.productoId ?? i.id);
+        if (!id) {
+          console.warn('Bandeja sin id detectada', i);
+        }
+        return {
+          id_bandeja: id,
+          cantidad: i.cantidad,
+          precio_unitario: i.precio,
+        };
+      });
 
-  const bandejas = items
-    .filter(i => i.tipo === 'bandeja')
-    .map(i => ({ id_bandeja: i.id, cantidad: i.cantidad }));
-
-  const payload = {
-    id_cliente: cliente.id,
-    fecha_entrega: fechaEntregaISO,
-    tipo_entrega: metodoEntrega,                   // 'envio' | 'retiro'
-    direccion_entrega: metodoEntrega === 'envio' ? (direccionEntrega || null) : null,
-    observaciones,
-    tortas,
-    bandejas,
-  };
-
+    const payload: PedidoPayload = {
+      id_cliente: cliente.id,
+      fecha_entrega: fechaEntrega,
+      tipo_entrega: tipoEntrega,
+      direccion_entrega: direccionEntrega || null,
+      observaciones: observaciones || null,
+      tortas,
+      bandejas,
+    };
+    console.log('Enviando payload a /pedidos', payload);
   try {
     await confirmarPedido(payload);
     onClearItems();
@@ -95,7 +113,7 @@ export default function AddEditPedidos({
     setFechaEntrega('');
     setDireccionEntrega('');
     setObservaciones('');
-    setMetodoEntrega('');
+    setTipoEntrega('retiro');
   } catch (e) {
     console.error(e);
     alert('Error al confirmar pedido');
@@ -148,8 +166,8 @@ export default function AddEditPedidos({
           <label className="block text-sm font-medium">Método de entrega</label>
           <select
             className="w-full rounded-md border px-3 py-2 text-sm"
-            value={metodoEntrega}
-            onChange={(e) => setMetodoEntrega(e.target.value as 'envio'|'retiro')}
+            value={tipoEntrega}
+            onChange={(e) => setTipoEntrega(e.target.value as 'envio'|'retiro')}
           >
             <option value="">Seleccionar…</option>
             <option value="envio">Envío</option>
