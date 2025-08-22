@@ -15,10 +15,23 @@ export interface Producto {
 }
 
 export interface ItemPedido {
-  key: string;                
-  productoId: number;          
-  tipo: ProductoTipo;          
+  key: string;
+  id: number;
+  tipo: ProductoTipo;
   nombre: string;
   precio: number;
   cantidad: number;
+}
+
+export interface PedidoPayload {
+  clienteId: number;
+  fechaEntrega: string;
+  direccionEntrega: string;
+  observaciones: string;
+  items: {
+    productoId: number;
+    cantidad: number;
+    precio: number;
+  }[];
+  total: number;
 }

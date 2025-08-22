@@ -51,20 +51,11 @@ export default function ClienteModal({
               </tr>
             </thead>
             <tbody>
-              {clientes.map((c) => (
-                <tr key={c.id} className="border-t">
+              {clientes.map((c, idx) => (
+                <tr key={c?.id ?? `cli-${idx}`} className="border-t">
                   <td className="p-2">{c.nombre}</td>
                   <td className="p-2 text-right">
-                    <Button
-                      size="sm"
-                      className="bg-pastel-blue hover:bg-blue-200"
-                      onClick={() => {
-                        onSelect(c);
-                        onClose();
-                      }}
-                    >
-                      Seleccionar
-                    </Button>
+                    <Button onClick={() => onSelect(c)}>Seleccionar</Button>
                   </td>
                 </tr>
               ))}

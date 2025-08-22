@@ -50,6 +50,7 @@ export default function AddEditPedidos({
   const [fechaEntrega, setFechaEntrega] = useState('');
   const [direccionEntrega, setDireccionEntrega] = useState('');
   const [observaciones, setObservaciones] = useState('');
+  const [metodoEntrega, setMetodoEntrega] = useState<'envio'|'retiro'|''>('');
 
   const total = items.reduce(
     (sum, item) => sum + item.precio * item.cantidad,
@@ -62,44 +63,49 @@ export default function AddEditPedidos({
   };
 
   const handleConfirm = async () => {
-    if (!cliente) {
-      alert('Seleccione un cliente');
-      return;
-    }
-    if (items.length === 0) {
-      alert('Agregue al menos un producto');
-      return;
-    }
-    const payload = {
-      clienteId: cliente.id,
-      fechaEntrega,
-      direccionEntrega,
-      observaciones,
-      items: items.map((i) => ({
-        productoId: i.productoId,
-        cantidad: i.cantidad,
-        precio: i.precio,
-      })),
-      total,
-    };
-    try {
-      await confirmarPedido(payload);
-      console.log('Pedido confirmado', payload);
-      onClearItems();
-      setCliente(null);
-      setFechaEntrega('');
-      setDireccionEntrega('');
-      setObservaciones('');
-    } catch (error) {
-      console.error('Error al confirmar pedido', error);
-      alert('Error al confirmar pedido');
-    }
+  if (!cliente) return alert('Seleccione un cliente');
+  if (!fechaEntrega) return alert('Seleccione la fecha de entrega');
+  if (!metodoEntrega) return alert('Seleccione el método de entrega');
+  if (items.length === 0) return alert('Agregue al menos un producto');
+
+  const fechaEntregaISO = new Date(fechaEntrega).toISOString();
+
+  const tortas = items
+    .filter(i => i.tipo === 'torta')
+    .map(i => ({ id_torta: i.id, cantidad: i.cantidad }));
+
+  const bandejas = items
+    .filter(i => i.tipo === 'bandeja')
+    .map(i => ({ id_bandeja: i.id, cantidad: i.cantidad }));
+
+  const payload = {
+    id_cliente: cliente.id,
+    fecha_entrega: fechaEntregaISO,
+    tipo_entrega: metodoEntrega,                   // 'envio' | 'retiro'
+    direccion_entrega: metodoEntrega === 'envio' ? (direccionEntrega || null) : null,
+    observaciones,
+    tortas,
+    bandejas,
   };
+
+  try {
+    await confirmarPedido(payload);
+    onClearItems();
+    setCliente(null);
+    setFechaEntrega('');
+    setDireccionEntrega('');
+    setObservaciones('');
+    setMetodoEntrega('');
+  } catch (e) {
+    console.error(e);
+    alert('Error al confirmar pedido');
+  }
+};
 
   return (
     <div className="p-6 bg-pastel-cream rounded-2xl shadow-2xl space-y-6">
         <h2 className="text-2xl font-semibold mb-4">Agregar Pedido</h2>
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="flex gap-2">
           <div className="flex-1">
             <label className="block text-sm font-medium">
@@ -139,6 +145,18 @@ export default function AddEditPedidos({
           />
         </div>
         <div>
+          <label className="block text-sm font-medium">Método de entrega</label>
+          <select
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            value={metodoEntrega}
+            onChange={(e) => setMetodoEntrega(e.target.value as 'envio'|'retiro')}
+          >
+            <option value="">Seleccionar…</option>
+            <option value="envio">Envío</option>
+            <option value="retiro">Retiro</option>
+          </select>
+        </div>
+        <div>
           <label className="block text-sm font-medium">
             Observaciones
           </label>
@@ -149,17 +167,14 @@ export default function AddEditPedidos({
             placeholder="Notas adicionales sobre el pedido"
           />
         </div>
-      </div>
-
-      <div>
-        <Button
-          type="button"
-          className="bg-pastel-blue hover:bg-blue-400"
-          onClick={() => setProductoModal(true)}
-        >
-          Agregar tortas o bandejas
-        </Button>
-      </div>
+          <Button
+            type="button"
+            className="bg-pastel-blue hover:bg-blue-400 mt-5"
+            onClick={() => setProductoModal(true)}
+            >
+            Agregar tortas o bandejas
+          </Button>
+      </div>  
       <h3 className="text-lg font-semibold mt-6 mb-2">Productos en pedido</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-left">

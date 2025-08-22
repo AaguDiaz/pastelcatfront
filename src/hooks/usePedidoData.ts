@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Cliente, Producto } from '@/interfaces/pedidos';
+import { Cliente, Producto, PedidoPayload} from '@/interfaces/pedidos';
+import { debugFetch } from '@/lib/debugFetch';
 
 const API_BASE_URL = 'http://localhost:5000' //'https://pastelcatback.onrender.com';
 
@@ -25,7 +26,7 @@ const usePedidoData = () => {
         ...(token && { Authorization: `Bearer ${token}` }),
       };
 
-      const res = await fetch(url, { ...options, headers });
+      const res = await debugFetch(url, { ...options, headers });
 
       if (res.status === 401 || res.status === 403) {
         localStorage.removeItem('token');
@@ -48,7 +49,18 @@ const usePedidoData = () => {
   );
   type Tipo = 'torta' | 'bandeja';
 
-    const normalizeProducto = (x: any, tipo: Tipo): Producto => {
+   interface RawProducto {
+    id?: number;
+    id_torta?: number;
+    id_bandeja?: number;
+    id_producto?: number;
+    nombre: string;
+    precio: number;
+    imagen?: string;
+    tamanio?: string;
+  }
+
+    const normalizeProducto = (x: RawProducto, tipo: Tipo): Producto => {
         const rawId = x.id ?? x.id_torta ?? x.id_bandeja ?? x.id_producto;
         return {
             id: Number(rawId),                 // aseguro número
@@ -80,8 +92,8 @@ const usePedidoData = () => {
         `${API_BASE_URL}/productos?tipo=${tipoProducto}&page=${productoPage}&pageSize=6&search=${encodeURIComponent(productoSearch)}`
         );
 
-        const raw = result?.data ?? [];
-        const normalized: Producto[] = raw.map((x: any) => normalizeProducto(x, tipoProducto));
+        const raw = (result?.data ?? []) as RawProducto[];
+        const normalized: Producto[] = raw.map((x) => normalizeProducto(x, tipoProducto));
 
         setProductos(normalized);
         setHasMoreProductos(raw.length === 6);
@@ -90,7 +102,7 @@ const usePedidoData = () => {
         setProductos([]);
         setHasMoreProductos(false);
     }
-   }, [fetchWithAuth, tipoProducto, productoPage, productoSearch]);
+   }, [fetchWithAuth, tipoProducto, productoPage, productoSearch, normalizeProducto]);
 
   useEffect(() => {
     setClientePage(1);
@@ -114,7 +126,7 @@ const usePedidoData = () => {
   const prevProductos = () => setProductoPage((p) => Math.max(1, p - 1));
 
   const confirmarPedido = useCallback(
-    async (pedido: unknown) => {
+    async (pedido: PedidoPayload) => {
       try {
         return await fetchWithAuth(`${API_BASE_URL}/pedidos`, {
           method: 'POST',
