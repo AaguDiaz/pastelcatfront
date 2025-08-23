@@ -123,7 +123,7 @@ export default function AddEditPedidos({
     setDireccionEntrega('');
     setObservaciones('');
     setTipoEntrega('retiro');
-  } catch (e) {
+  } catch {
     setErrorMsg('Error al confirmar el pedido. Intente nuevamente.');
   }
 };

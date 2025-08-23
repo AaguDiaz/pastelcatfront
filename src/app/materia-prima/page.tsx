@@ -33,7 +33,6 @@ export default function MateriasPrimas() {
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [modalEliminar, setModalEliminar] = useState<{ isOpen: boolean; materia: MateriaPrima | null }>({ isOpen: false, materia: null });
   const [errorModal, setErrorModal] = useState<{ open: boolean; titulo: string; mensaje: string }>({ open: false, titulo: '', mensaje: '' });
-  const [idEliminar, setIdEliminar] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
 
@@ -67,7 +66,7 @@ export default function MateriasPrimas() {
   }catch (error) {
       console.error(error);
     }
-  }, [API_BASE_URL, pagina, search, router]);
+  }, [pagina, search, router]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -166,13 +165,15 @@ export default function MateriasPrimas() {
 
       // OK
       fetchMaterials();
-    } catch (error: any) {
-      setErrorModal({
-        open: true,
-        titulo: 'Error inesperado',
-        mensaje: error?.message || 'Ocurrió un error inesperado.',
-      });
-    }
+    } catch (error: unknown) {
+        const mensaje =
+          error instanceof Error ? error.message : 'Ocurrió un error inesperado.';
+        setErrorModal({
+          open: true,
+          titulo: 'Error inesperado',
+          mensaje,
+        });
+      }
   };
 
   return (
@@ -219,7 +220,7 @@ export default function MateriasPrimas() {
                     <Button onClick={()=> editarFila(row)} className="bg-pastel-blue hover:scale-105 transition-transform">
                       <Pencil size={16} />
                     </Button>
-                    <Button onClick={() => { setIdEliminar(row.id); setModalEliminar({ isOpen: true, materia: row }) }} className="bg-pastel-red hover:scale-105 transition-transform">
+                    <Button onClick={() => setModalEliminar({ isOpen: true, materia: row }) } className="bg-pastel-red hover:scale-105 transition-transform">
                       <Trash2 size={16} />
                     </Button>
                   </td>
