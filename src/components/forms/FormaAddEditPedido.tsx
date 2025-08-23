@@ -85,7 +85,6 @@ export default function AddEditPedidos({
       .map((i) => {
         const id = Number(i.productoId ?? i.id);
         if (!id) {
-          console.warn('Torta sin id detectada', i);
         }
         return {
           id_torta: id,
@@ -116,7 +115,6 @@ export default function AddEditPedidos({
       tortas,
       bandejas,
     };
-    console.log('Enviando payload a /pedidos', payload);
   try {
     await confirmarPedido(payload);
     onClearItems();
@@ -126,7 +124,6 @@ export default function AddEditPedidos({
     setObservaciones('');
     setTipoEntrega('retiro');
   } catch (e) {
-    console.error(e);
     setErrorMsg('Error al confirmar el pedido. Intente nuevamente.');
   }
 };

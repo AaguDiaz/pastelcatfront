@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, Pencil} from 'lucide-react'
 import {api} from '@/lib/api';
+import EliminarModal from '@/components/modals/eliminar';
+import ModalError from '@/components/modals/error';
 
 const API_BASE_URL = api;
 
@@ -19,6 +20,7 @@ interface MateriaPrima {
   precio: number;
 }
 
+
 export default function MateriasPrimas() {
   const router = useRouter();
   const [data, setData] = useState<MateriaPrima[]>([]);
@@ -29,12 +31,13 @@ export default function MateriasPrimas() {
   const [search, setSearch] = useState('');
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
-  const [modalEliminar, setModalEliminar] = useState(false);
+  const [modalEliminar, setModalEliminar] = useState<{ isOpen: boolean; materia: MateriaPrima | null }>({ isOpen: false, materia: null });
+  const [errorModal, setErrorModal] = useState<{ open: boolean; titulo: string; mensaje: string }>({ open: false, titulo: '', mensaje: '' });
   const [idEliminar, setIdEliminar] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
 
-  const fetchMaterials = async () => {
+  const fetchMaterials = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_BASE_URL}/materias-primas?page=${pagina}&search=${encodeURIComponent(search)}`, {
@@ -64,7 +67,7 @@ export default function MateriasPrimas() {
   }catch (error) {
       console.error(error);
     }
-}
+  }, [API_BASE_URL, pagina, search, router]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -74,7 +77,7 @@ export default function MateriasPrimas() {
     }else{
       fetchMaterials();
     }
-  }, [router, pagina, search, fetchMaterials]);
+  }, [router, fetchMaterials]);
 
   const agregarFila = async () => {
     try{
@@ -125,10 +128,10 @@ export default function MateriasPrimas() {
     setEditId(row.id);
   }
 
-  const eliminar = async () => {
+  const eliminar = async (id: number) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/materias-primas/${idEliminar}`, {
+      const res = await fetch(`${API_BASE_URL}/materias-primas/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -141,15 +144,36 @@ export default function MateriasPrimas() {
           router.push('/login');
           return;
         }
-        throw new Error('Error al eliminar');
+        const ct = res.headers.get('content-type') || '';
+        let msg = 'Error al eliminar';
+        if (ct.includes('application/json')) {
+          try {
+            const data = await res.json();
+            msg = data?.error || data?.message || msg;
+          } catch {}
+        } else {
+          const text = await res.text();
+          if (text) msg = text;
+        }
+
+        setErrorModal({
+          open: true,
+          titulo: (res.status === 409 || res.status === 400) ? 'No se puede eliminar' : 'Error al eliminar',
+          mensaje: msg,
+        });
+        return;
       }
-      setModalEliminar(false);
-      setIdEliminar(null);
+
+      // OK
       fetchMaterials();
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      setErrorModal({
+        open: true,
+        titulo: 'Error inesperado',
+        mensaje: error?.message || 'Ocurrió un error inesperado.',
+      });
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-pastel-beige p-8">
@@ -195,7 +219,7 @@ export default function MateriasPrimas() {
                     <Button onClick={()=> editarFila(row)} className="bg-pastel-blue hover:scale-105 transition-transform">
                       <Pencil size={16} />
                     </Button>
-                    <Button onClick={() => { setIdEliminar(row.id); setModalEliminar(true) }} className="bg-pastel-red hover:scale-105 transition-transform">
+                    <Button onClick={() => { setIdEliminar(row.id); setModalEliminar({ isOpen: true, materia: row }) }} className="bg-pastel-red hover:scale-105 transition-transform">
                       <Trash2 size={16} />
                     </Button>
                   </td>
@@ -215,17 +239,24 @@ export default function MateriasPrimas() {
         </div>
       </div>
 
-      <Dialog open={modalEliminar} onOpenChange={setModalEliminar}>
-        <DialogContent className="bg-pastel-cream">
-          <DialogHeader>
-            <h2 className="text-lg font-semibold">¿Estás seguro de eliminar esta materia prima?</h2>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModalEliminar(false)}>Cancelar</Button>
-            <Button className="bg-pastel-red hover:scale-105 transition-transform" onClick={eliminar}>Eliminar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {modalEliminar.isOpen && modalEliminar.materia && (
+              <EliminarModal
+                nombre={`${modalEliminar.materia.nombre} (${modalEliminar.materia.unidad})`}
+                contexto="Materias primas"
+                onClose={(confirmed) => {
+                  const m = modalEliminar.materia;
+                  setModalEliminar({ isOpen: false, materia: null });
+                  if (confirmed && m) eliminar(m.id);
+                }}
+              />
+            )}
+      {errorModal.open && (
+        <ModalError
+          titulo={errorModal.titulo}
+          mensaje={errorModal.mensaje}
+          onClose={() => setErrorModal({ open: false, titulo: '', mensaje: '' })}
+        />
+      )}
     </div>
   )
 }

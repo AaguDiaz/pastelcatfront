@@ -8,7 +8,6 @@ const API_BASE_URL = api;
 const usePedidoData = () => {
   const [clienteSearch, setClienteSearch] = useState('');
   const [productoSearch, setProductoSearch] = useState('');
-  const [tipoProducto, setTipoProducto] = useState<'torta' | 'bandeja'>('torta');
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -17,7 +16,13 @@ const usePedidoData = () => {
   const [hasMoreClientes, setHasMoreClientes] = useState(false);
   const [hasMoreProductos, setHasMoreProductos] = useState(false);
 
-
+  const [tipoProductoState, setTipoProductoState] = useState<'torta' | 'bandeja'>('torta');
+    const setTipoProducto = useCallback((tipo: 'torta' | 'bandeja') => {
+      setProductoPage(1);
+      setTipoProductoState(tipo);
+    }, []);
+    
+  const tipoProducto = tipoProductoState;
   const fetchWithAuth = useCallback(
     async (url: string, options: RequestInit = {}) => {
       const token = localStorage.getItem('token');
@@ -36,10 +41,7 @@ const usePedidoData = () => {
       }
 
       if (!res.ok) {
-        const text = await res.text();
-        const errorText = await res.text();
-        console.error('[HTTP ERROR BODY]', errorText);
-        throw new Error(text || 'Error al cargar datos');
+        throw new Error(await res.text() || 'Error al cargar datos');
       }
 
       const contentType = res.headers.get('content-type');
@@ -126,7 +128,7 @@ const usePedidoData = () => {
 
   useEffect(() => {
     setProductoPage(1);
-  }, [productoSearch, tipoProducto]);
+  }, [productoSearch]);
 
   useEffect(() => {
     loadClientes();

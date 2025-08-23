@@ -67,4 +67,3 @@ export interface TortaBackend {
     tamanio: string;
     receta: RecetaBackend [] | null; // Puede ser null si no tiene receta asignada
 }
-

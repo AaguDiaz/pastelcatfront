@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Producto } from '@/interfaces/pedidos';
+import {Info} from 'lucide-react';
 
 interface ProductCardProps {
   producto: Producto;
@@ -44,10 +45,10 @@ export default function ProductCard({ producto, onAdd, onDetails }: ProductCardP
           {onDetails && (
             <Button
               size="sm"
-              className="bg-pastel-yellow hover:bg-yellow-200"
+              className="bg-pastel-yellow hover:bg-yellow-100"
               onClick={() => onDetails(producto)}
             >
-              Ver detalles
+              <Info className="h-4 w-4 mr-1" /> Ver Detalles
             </Button>
           )}
         </div>

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Pencil, Trash2, Info, Loader2 } from 'lucide-react';
 import { Bandeja } from '@/interfaces/bandejas'; // Asegúrate de que la ruta sea correcta
 import { Input } from '../ui/input';
-
+import DetallesBandeja from '../modals/detallebandeja';
 
 interface FormTablaBandejaProps {
   bandejas: Bandeja[];
@@ -20,12 +20,12 @@ interface FormTablaBandejaProps {
 }
 
 export const FormTablaBandeja = ({ 
-  bandejas, seleccionarBandeja, loading, currentPage, totalPages, handleSearch, handleLoadMore, deleteBandeja 
+  bandejas, seleccionarBandeja, loading, currentPage, totalPages, handleSearch, handleLoadMore, deleteBandeja
 }: FormTablaBandejaProps) => {
-
   const [visibleCount] = useState(8); // Mostrar 8 bandejas inicialmente
   const [searchTerm, setSearchTerm] = useState('');
   const canLoadMore = currentPage < totalPages;
+  const [detallesBandeja, setDetallesBandeja] = useState<Bandeja | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -81,7 +81,7 @@ export const FormTablaBandeja = ({
                     <Button title="Eliminar" size="sm" className="bg-pastel-red hover:bg-red-200" onClick={() => handleDeleteClick(bandeja.id_bandeja, bandeja.nombre)}>
                         <Trash2 className="h-4 w-4" /> Eliminar
                     </Button>
-                    <Button title="Ver Detalles" size="sm" className="bg-pastel-yellow hover:bg-yellow-100" onClick={() => seleccionarBandeja(bandeja.id_bandeja, 'view')}>
+                    <Button title="Ver Detalles" size="sm" className="bg-pastel-yellow hover:bg-yellow-100" onClick={() => setDetallesBandeja(bandeja)}>
                         <Info className="h-4 w-4" /> Ver Detalles
                     </Button>
                   </div>
@@ -97,8 +97,11 @@ export const FormTablaBandeja = ({
         <div className="text-center mt-8">
           <Button onClick={handleLoadMore} className="bg-pastel-blue hover:bg-blue-400 text-white">
             {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cargando...</> : 'Ver Más'}
-          </Button> 
+          </Button>
         </div>
+      )}
+      {detallesBandeja && (
+        <DetallesBandeja bandeja={detallesBandeja} onClose={() => setDetallesBandeja(null)} />
       )}
     </div>
   );
