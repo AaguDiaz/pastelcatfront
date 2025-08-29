@@ -21,7 +21,6 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
-import { addHoursToDate } from "./utils"
 import { AgendaDaysToShow, EventGap, EventHeight, WeekCellsHeight } from "./constants"
 import { CalendarDndProvider } from "./calendar-dnd-context"
 import type { CalendarEvent, CalendarView } from "./types"
