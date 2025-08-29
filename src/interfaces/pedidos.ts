@@ -39,3 +39,12 @@ export interface PedidoPayload {
     cantidad: number;
   }[];
 }
+
+export interface Pedido {
+  id: number;
+  cliente: Cliente;
+  fecha_entrega: string;
+  total: number;
+  observaciones: string | null;
+  estado: string;
+}

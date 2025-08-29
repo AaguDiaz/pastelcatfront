@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import usePedidoData from '@/hooks/usePedidoData';
+import { usePedidoDataCtx } from '@/context/PedidoDataContext';
 import { Cliente, Producto, ItemPedido, PedidoPayload } from '@/interfaces/pedidos';
 import ClienteModal from '../modals/cliente';
 import ProductosModal from '../modals/producto';
@@ -15,6 +15,7 @@ interface AddEditPedidosProps {
   onUpdateItemQuantity: (key: string, qty: number) => void; // <- antes id:number
   onRemoveItem: (key: string) => void;                      // <- antes id:number
   onClearItems: () => void;
+  onReplaceItems?: (items: ItemPedido[]) => void;
 }
 
 export default function AddEditPedidos({
@@ -23,6 +24,7 @@ export default function AddEditPedidos({
   onUpdateItemQuantity,
   onRemoveItem,
   onClearItems,
+  onReplaceItems,
 }: AddEditPedidosProps) {
   const [clienteModal, setClienteModal] = useState(false);
   const [productoModal, setProductoModal] = useState(false);
@@ -45,7 +47,11 @@ export default function AddEditPedidos({
     productoPage,
     hasMoreProductos,
     confirmarPedido,
-  } = usePedidoData();
+    updatePedido,
+    clearEdit,
+    isEditing,
+    editDraft,
+  } = usePedidoDataCtx();
 
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [fechaEntrega, setFechaEntrega] = useState('');
@@ -68,6 +74,39 @@ export default function AddEditPedidos({
     setCliente(c);
     setClienteModal(false);
   };
+
+  // Normaliza un valor de fecha a formato válido para input datetime-local (YYYY-MM-DDTHH:mm)
+  const toDatetimeLocal = (value?: string | null): string => {
+    if (!value) return '';
+    const candidate = value.includes('T') ? value : value.replace(' ', 'T');
+    const d = new Date(candidate);
+    if (isNaN(d.getTime())) return '';
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    return local;
+  };
+
+  // Al entrar en modo edición, cargamos los datos del pedido en el formulario UNA sola vez por id
+  const initDraftIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!isEditing || !editDraft) return;
+    if (initDraftIdRef.current === editDraft.id) return;
+    initDraftIdRef.current = editDraft.id;
+    setCliente(editDraft.cliente);
+    setFechaEntrega(toDatetimeLocal(editDraft.fecha_entrega) || '');
+    setTipoEntrega(editDraft.tipo_entrega || '');
+    setDireccionEntrega(editDraft.direccion_entrega || '');
+    setObservaciones(editDraft.observaciones || '');
+    if (onReplaceItems) {
+      onReplaceItems(editDraft.items);
+    }
+  }, [isEditing, editDraft]);
+
+  // Al salir de edición, limpiar el ref para permitir re-cargar en la próxima edición
+  useEffect(() => {
+    if (!isEditing) initDraftIdRef.current = null;
+  }, [isEditing]);
 
    const handleAddProducto = (p: Producto) => {
     onAddItem(p);
@@ -116,21 +155,35 @@ export default function AddEditPedidos({
       bandejas,
     };
   try {
-    await confirmarPedido(payload);
-    onClearItems();
-    setCliente(null);
+      if (isEditing && editDraft) {
+        const body = {
+          id_cliente: cliente.id, // backend requiere id_cliente siempre
+          fecha_entrega: payload.fecha_entrega,
+          tipo_entrega: payload.tipo_entrega,
+          direccion_entrega: payload.direccion_entrega,
+          observaciones: payload.observaciones,
+          tortas: payload.tortas,
+          bandejas: payload.bandejas,
+        };
+        await updatePedido(editDraft.id, body);
+      } else {
+        await confirmarPedido(payload);
+      }
+      onClearItems();
+      clearEdit();
+      setCliente(null);
     setFechaEntrega('');
     setDireccionEntrega('');
     setObservaciones('');
-    setTipoEntrega('retiro');
+    setTipoEntrega('');
   } catch {
-    setErrorMsg('Error al confirmar el pedido. Intente nuevamente.');
+    setErrorMsg(isEditing ? 'Error al editar el pedido. Intente nuevamente.' : 'Error al confirmar el pedido. Intente nuevamente.');
   }
 };
 
   return (
     <div className="p-6 bg-pastel-cream rounded-2xl shadow-2xl space-y-6">
-        <h2 className="text-2xl font-semibold mb-4">Agregar Pedido</h2>
+        <h2 className="text-2xl font-semibold mb-4">{isEditing ? 'Editar pedido' : 'Agregar Pedido'}</h2>
       <div className="grid gap-4 md:grid-cols-3">
         <div className="flex gap-2">
           <div className="flex-1">
@@ -244,6 +297,7 @@ export default function AddEditPedidos({
                     <td className="p-2">${(item.precio * item.cantidad).toFixed(2)}</td>
                     <td className="p-2">
                         <Button
+                        type="button"
                         className="bg-pastel-red hover:bg-red-400"
                         onClick={() => onRemoveItem(item.key)}
                         >
@@ -260,8 +314,8 @@ export default function AddEditPedidos({
       </div>
 
       <div className="flex gap-4">
-        <Button onClick={handleConfirm} className="bg-pastel-blue hover:bg-blue-400">
-          Confirmar pedido
+        <Button type="button" onClick={handleConfirm} className="bg-pastel-blue hover:bg-blue-400">
+          {isEditing ? 'Editar pedido' : 'Confirmar pedido'}
         </Button>
         <Button onClick={onClearItems} className="bg-pastel-yellow hover:bg-yellow-400">
           Limpiar tabla

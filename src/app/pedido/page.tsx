@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import AddEditPedidos from '@/components/forms/FormaAddEditPedido';
+import FormTablaPedido from '@/components/forms/FormTablaPedido';
 import { ItemPedido, Producto } from '@/interfaces/pedidos';
+import { PedidoDataProvider } from '@/context/PedidoDataContext';
 
 export default function PedidosPage() {
   const [items, setItems] = useState<ItemPedido[]>([]);
@@ -43,13 +45,17 @@ export default function PedidosPage() {
 
   return (
     <div className="min-h-screen bg-pastel-beige p-4 md:p-8">
-      <AddEditPedidos
-        items={items}
-        onAddItem={addItem}
-        onUpdateItemQuantity={updateQty}
-        onRemoveItem={removeItem}
-        onClearItems={clearItems}
-      />
+      <PedidoDataProvider>
+        <AddEditPedidos
+          items={items}
+          onAddItem={addItem}
+          onUpdateItemQuantity={updateQty}
+          onRemoveItem={removeItem}
+          onClearItems={clearItems}
+          onReplaceItems={(newItems: ItemPedido[]) => setItems(newItems)}
+        />
+        <FormTablaPedido />
+      </PedidoDataProvider>
     </div>
   );
 }
