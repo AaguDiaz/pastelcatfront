@@ -345,7 +345,7 @@ export function EventDialog({
                     id="end-date"
                     variant={"outline"}
                     className={cn(
-                      "group bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
+                      "group bg-pastel-beige hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
                       !endDate && "text-muted-foreground"
                     )}
                   >

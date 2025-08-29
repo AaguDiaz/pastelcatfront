@@ -53,11 +53,11 @@
     --pastel-red: #ff6961; /* Rojo */
     --pastel-yellow: #f9e79f; /* Amarillo suave */
     --pastel-green: #a8e6cf; /* Verde suave */
-    --background: oklch(1 0 0); /* --color-white */
-    --foreground: oklch(0.141 0.005 285.823); /* --color-zinc-950 */
-    --card: oklch(1 0 0); /* --color-white */
-    --card-foreground: oklch(0.141 0.005 285.823); /* --color-zinc-950 */
-    --popover: oklch(1 0 0); /* --color-white */
+    --background: #f8f8e2; /* --color-white */
+    --foreground: #0e0e0e; /* --color-zinc-950 */
+    --card: #f8f8e2; /* --color-white */
+    --card-foreground: #0e0e0e; /* --color-zinc-950 */
+    --popover: #f8f8e2; /* --color-white */
     --popover-foreground: oklch(0.141 0.005 285.823); /* --color-zinc-950 */
     --primary: oklch(0.21 0.006 285.885); /* --color-zinc-900 */
     --primary-foreground: oklch(0.985 0 0); /* --color-zinc-50 */

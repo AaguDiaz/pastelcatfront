@@ -60,7 +60,8 @@ export default function CalendarioPage() {
           if (!cancelled) {
             setPedidoLocations((prev) => ({ ...prev, [id]: full.direccion_entrega ?? undefined }))
           }
-        } catch (e) {
+        } catch (error) {
+          console.error("Error fetching pedido completo for location:", error)
           if (!cancelled) setPedidoLocations((prev) => ({ ...prev, [id]: undefined }))
         }
       }
