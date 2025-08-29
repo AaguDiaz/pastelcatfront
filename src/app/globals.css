@@ -9,6 +9,7 @@
     --pastel-brown: #7B3F00; /* Marrón claro */
     --pastel-red: #ff6961; /* Rojo */
     --pastel-yellow: #f9e79f; /* Amarillo suave */
+    --pastel-green: #a8e6cf; /* Verde suave */
   }
 }
 
@@ -33,6 +34,9 @@
   }
   .bg-pastel-yellow {
     background-color: var(--pastel-yellow);
+  }
+  .bg-pastel-green {
+    background-color: var(--pastel-green);
   }
 }
 

@@ -80,7 +80,7 @@ export const FormAgregarBandeja = ({
         } else {
             handleLimpiar();
         }
-    }, [bandejaSeleccionada, modo, ]);
+    }, [bandejaSeleccionada, modo]);
 
     const handleImagenChange = (e: ChangeEvent<HTMLInputElement>) => {
        const file = e.target.files ? e.target.files[0] : null;

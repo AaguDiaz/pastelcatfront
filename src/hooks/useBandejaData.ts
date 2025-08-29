@@ -3,8 +3,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { calcularCostoIngrediente } from '@/lib/calculoCostos'; 
 import { Bandeja, TortaBackend, TortaDisponible, TortaEnBandeja } from '@/interfaces/bandejas'; 
+import {api} from '@/lib/api'; 
 
-const API_BASE_URL = 'https://pastelcatback.onrender.com'; // 'http://localhost:5000'; //
+const API_BASE_URL = api;
 
 export const useBandejaData = () => {
     const [bandejas, setBandejas] = useState<Bandeja[]>([]);
@@ -48,10 +49,10 @@ export const useBandejaData = () => {
 
     }, []);
 
-    const fetchTortasYCalcularCostos = async () => {
+    const fetchTortasYCalcularCostos = useCallback(async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch(`${API_BASE_URL}/bandejas/tortas`, { 
+                const response = await fetch(`${API_BASE_URL}/bandejas/tortas`, {
                     headers: {
                         ...(token && { Authorization: `Bearer ${token}` }),
                        'Content-Type': 'application/json',
@@ -130,7 +131,7 @@ export const useBandejaData = () => {
                 console.error("Error al obtener y procesar tortas:", error);
                 // Opcionalmente, puedes establecer un estado de error o mostrar un mensaje al usuario
             }
-        };
+        }, [router]);
 
     // --- OBTENER BANDEJAS (CON PAGINACIÓN Y BÚSQUEDA) ---
     const fetchBandejas = useCallback(async (page: number, search: string, loadMore = false) => {
@@ -152,21 +153,21 @@ export const useBandejaData = () => {
                         localStorage.removeItem('token');
                         router.push('/login');
                         return null;
-                    }       
-                    let errorMessage = 'Error al obtenerla bandeja';
+                    }
+                    let errorMessage = 'Error al obtener la bandeja';
                     try {
                         const errorData = await response.json();
                         errorMessage = errorData.message || errorData.error || errorMessage;
                     } catch { /* No hacer nada si el cuerpo no es JSON */ }
                          throw new Error(errorMessage);
-                }
+            }
         
         if (!response.ok) throw new Error('Error al obtener las bandejas.');
         
         const result = await response.json();
         
         // Si es "Cargar Más", añade los resultados. Si no, reemplaza.
-        setBandejas(loadMore ? [...bandejas, ...result.data] : result.data);
+        setBandejas(prev => (loadMore ? [...prev, ...result.data] : result.data));
         setCurrentPage(result.currentPage);
         setTotalPages(result.totalPages);
 
@@ -175,8 +176,8 @@ export const useBandejaData = () => {
         } finally {
         setLoading(false);
         }
-    }, [bandejas]); // Dependencia 'bandejas' para el 'loadMore'
-
+    }, [router]); 
+    
      const agregarBandeja = useCallback(async (bandejaData: { nombre: string; precio: number | null; tamanio: string; imagen: File | null; tortas: TortaEnBandeja[] }) => {
         setLoading(true);
         setError(null);

@@ -19,12 +19,11 @@ const conversiones = {
 };
 
 export function normalizarUnidad(cantidad, unidad) {
+ if (typeof unidad !== 'string' || !unidad) {
+    return { valor: cantidad, tipo: 'unidad' };
+  } 
   const unidadNormalizada = unidad.toLowerCase().replace('.', '');
   
-  if (typeof unidad !== 'string' || !unidad) {
-    return { valor: cantidad, tipo: 'unidad' };
-  }
-
   if (conversiones.peso[unidadNormalizada]) {
     return { valor: cantidad * conversiones.peso[unidadNormalizada], tipo: 'peso' };
   }

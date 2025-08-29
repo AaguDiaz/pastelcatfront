@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback} from 'react';
 import { useRouter } from 'next/navigation';
 import { Torta, TortasApiResponse } from '../interfaces/tortas';
+import {api} from '@/lib/api';
 
-const API_BASE_URL = 'https://pastelcatback.onrender.com'; // 'http://localhost:5000'; //
+const API_BASE_URL = api;
 export const useTortasData = (initialSearch = '') => {
   const [tortas, setTortas] = useState<Torta[]>([]);
   const [isLoading, setIsLoading] = useState(true); // Para carga inicial o nueva búsqueda

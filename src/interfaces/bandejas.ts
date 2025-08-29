@@ -65,6 +65,5 @@ export interface TortaBackend {
     id_torta: number;
     nombre: string;
     tamanio: string;
-    receta: RecetaBackend []; // Puede ser null si no tiene receta
+    receta: RecetaBackend [] | null; // Puede ser null si no tiene receta asignada
 }
-
