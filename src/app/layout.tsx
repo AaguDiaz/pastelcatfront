@@ -164,7 +164,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <Bell size={16} />
                   </div>
                   <div className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
-                    <span>📅 Calendario</span>
+                    <Link href="/calendario" className="cursor-pointer" onClick={closeSidebar}>📅 Calendario</Link>
                     <Calendar size={16} />
                   </div>
                   <Link href="/dashboard" className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
