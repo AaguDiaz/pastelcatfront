@@ -148,7 +148,6 @@ const usePedidoData = () => {
         const idT = Number(d.id_torta ?? d.torta?.id ?? 0);
         const idB = Number(d.id_bandeja ?? d.bandeja?.id ?? 0);
         const isTorta = !!idT && !idB;
-        const isBandeja = !!idB && !idT;
         const tipo: 'torta' | 'bandeja' = isTorta ? 'torta' : 'bandeja';
         const productoId = isTorta ? idT : idB;
         const nombre = d.nombre ?? (isTorta ? d.torta?.nombre : d.bandeja?.nombre) ?? (isTorta ? `Torta ${productoId}` : `Bandeja ${productoId}`);
