@@ -13,7 +13,7 @@ interface DetallesBandejaProps {
 export default function DetallesBandeja({ bandeja, onClose }: DetallesBandejaProps) {
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="w-full !max-w-4xl mx-4 bg-pastel-cream text-gray-800 p-0 rounded-lg shadow-2xl border-none">
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-[85vw] lg:max-w-[70vw] xl:max-w-[60vw] mx-4 bg-pastel-cream text-gray-800 p-0 rounded-lg shadow-2xl border-none max-h-[90vh] overflow-y-auto">
         <VisuallyHidden>
           <DialogTitle>Detalles de la bandeja {bandeja.nombre}</DialogTitle>
         </VisuallyHidden>
