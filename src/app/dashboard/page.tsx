@@ -1,25 +1,23 @@
 'use client';
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+import CorePedidos from '@/components/dashboard/CorePedidos';
 
 export default function Dashboard() {
-    const router = useRouter();
+  const router = useRouter();
 
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            router.push("/login");
-        }
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/login');
     }
-    , [router]);
+  }, [router]);
 
-    return (
-        <div className="min-h-screen flex items-center bg-pastel-beige justify-center ">
-            <div className="w-full max-w-md p-8 bg-pastel-cream shadow-2xl rounded-lg mb-20">
-                <h2 className="text-2xl font-bold mb-6 text-center">Bienvenido a Dashboard</h2>
-                <p className="text-center">Aquí puedes ver tu información.</p>
-            </div>
-        </div>
-    );
+  return (
+    <div className='min-h-screen bg-pastel-beige'>
+      <CorePedidos />
+    </div>
+  );
 }
