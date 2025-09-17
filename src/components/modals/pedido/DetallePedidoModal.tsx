@@ -85,7 +85,7 @@ export default function DetallePedidoModal({ open, pedidoId, onClose }: DetalleP
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="w-full !max-w-4xl mx-4 bg-pastel-cream text-gray-800 p-6 rounded-lg shadow-2xl border-none">
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-[85vw] lg:max-w-[70vw] xl:max-w-[60vw] mx-4 bg-pastel-cream text-gray-800 p-6 rounded-lg shadow-2xl border-none max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className='text-lg leading-none font-semibold'>Detalle del pedido</DialogTitle>
         </DialogHeader>
@@ -173,3 +173,4 @@ export default function DetallePedidoModal({ open, pedidoId, onClose }: DetalleP
     </Dialog>
   );
 }
+

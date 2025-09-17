@@ -89,7 +89,7 @@ export default function Detallestorta({ torta, onClose, fetchRecetaDetails }: Ve
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="w-full !max-w-6xl mx-4 bg-pastel-cream text-gray-800 p-0 rounded-lg shadow-2xl border-none">
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-[85vw] lg:max-w-[75vw] xl:max-w-[70vw] mx-4 bg-pastel-cream text-gray-800 p-0 rounded-lg shadow-2xl border-none max-h-[90vh] overflow-y-auto">
         {/* Título oculto para accesibilidad */}
         <VisuallyHidden>
             <DialogTitle>Detalles de la torta {torta.nombre}</DialogTitle>
