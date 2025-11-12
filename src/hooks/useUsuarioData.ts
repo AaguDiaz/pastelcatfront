@@ -60,7 +60,6 @@ const decodeJwtUserId = (token: string | null) => {
 export const useUsuarioData = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<UsuarioFilter>('activos');
   const [page, setPage] = useState(1);
@@ -119,7 +118,6 @@ export const useUsuarioData = () => {
   );
 
   const showErrorModal = useCallback((message: string) => {
-    setError(message);
     setModalError({ open: true, message });
   }, []);
 
@@ -142,7 +140,6 @@ export const useUsuarioData = () => {
   const fetchUsuarios = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(PAGE_SIZE),
@@ -217,7 +214,6 @@ export const useUsuarioData = () => {
 
     try {
       setLoading(true);
-      setError(null);
 
       const payload = {
         nombre: normalizeText(form.nombre),
@@ -294,7 +290,6 @@ export const useUsuarioData = () => {
     async (usuario: Usuario) => {
       try {
         setLoading(true);
-        setError(null);
         await fetchWithAuth(`${API_BASE_URL}/usuarios/${usuario.id_perfil}`, {
           method: 'DELETE',
         });
@@ -320,7 +315,6 @@ export const useUsuarioData = () => {
     async (usuario: Usuario) => {
       try {
         setLoading(true);
-        setError(null);
         await fetchWithAuth(`${API_BASE_URL}/usuarios/${usuario.id_perfil}`, {
           method: 'PUT',
           body: JSON.stringify({ is_active: true }),
