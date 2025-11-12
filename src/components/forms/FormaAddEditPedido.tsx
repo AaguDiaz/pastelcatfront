@@ -75,7 +75,7 @@ export default function AddEditPedidos({
     setClienteModal(false);
   };
 
-  // Normaliza un valor de fecha a formato válido para input datetime-local (YYYY-MM-DDTHH:mm)
+  // Normaliza un valor de fecha a formato valido para input datetime-local (YYYY-MM-DDTHH:mm)
   const toDatetimeLocal = (value?: string | null): string => {
     if (!value) return '';
     const candidate = value.includes('T') ? value : value.replace(' ', 'T');
@@ -87,7 +87,7 @@ export default function AddEditPedidos({
     return local;
   };
 
-  // Al entrar en modo edición, cargamos los datos del pedido en el formulario UNA sola vez por id
+  // Al entrar en modo edicion, cargamos los datos del pedido en el formulario UNA sola vez por id
   const initDraftIdRef = useRef<number | null>(null);
   useEffect(() => {
     if (!isEditing || !editDraft) return;
@@ -103,7 +103,7 @@ export default function AddEditPedidos({
     }
   }, [isEditing, editDraft]);
 
-  // Al salir de edición, limpiar el ref para permitir re-cargar en la próxima edición
+  // Al salir de edicion, limpiar el ref para permitir re-cargar en la proxima edicion
   useEffect(() => {
     if (!isEditing) initDraftIdRef.current = null;
   }, [isEditing]);
@@ -114,10 +114,13 @@ export default function AddEditPedidos({
   };
 
   const handleConfirm = async () => {
-  if (!cliente) return setErrorMsg('Seleccione un cliente');
-  if (!fechaEntrega) return setErrorMsg('Seleccione la fecha de entrega');
-  if (!tipoEntrega) return setErrorMsg('Seleccione el método de entrega');
-  if (items.length === 0) return setErrorMsg('Agregue al menos un producto');
+    if (!cliente) return setErrorMsg('Seleccione un cliente');
+    if (!fechaEntrega) return setErrorMsg('Seleccione la fecha de entrega');
+    if (!tipoEntrega) return setErrorMsg('Seleccione el metodo de entrega');
+    if (items.length === 0) return setErrorMsg('Agregue al menos un producto');
+
+    const perfilId = Number(cliente.id_perfil ?? cliente.id ?? 0);
+    if (!perfilId) return setErrorMsg('El cliente seleccionado no tiene un perfil valido');
 
    const tortas = items
       .filter((i) => i.tipo === 'torta')
@@ -146,7 +149,7 @@ export default function AddEditPedidos({
       });
 
     const payload: PedidoPayload = {
-      id_cliente: cliente.id,
+      id_perfil: perfilId,
       fecha_entrega: fechaEntrega,
       tipo_entrega: tipoEntrega,
       direccion_entrega: direccionEntrega || null,
@@ -154,10 +157,10 @@ export default function AddEditPedidos({
       tortas,
       bandejas,
     };
-  try {
+    try {
       if (isEditing && editDraft) {
         const body = {
-          id_cliente: cliente.id, // backend requiere id_cliente siempre
+          id_perfil: perfilId, // backend requiere id_perfil siempre
           fecha_entrega: payload.fecha_entrega,
           tipo_entrega: payload.tipo_entrega,
           direccion_entrega: payload.direccion_entrega,
@@ -172,14 +175,14 @@ export default function AddEditPedidos({
       onClearItems();
       clearEdit();
       setCliente(null);
-    setFechaEntrega('');
-    setDireccionEntrega('');
-    setObservaciones('');
-    setTipoEntrega('');
-  } catch {
-    setErrorMsg(isEditing ? 'Error al editar el pedido. Intente nuevamente.' : 'Error al confirmar el pedido. Intente nuevamente.');
-  }
-};
+      setFechaEntrega('');
+      setDireccionEntrega('');
+      setObservaciones('');
+      setTipoEntrega('');
+    } catch {
+      setErrorMsg(isEditing ? 'Error al editar el pedido. Intente nuevamente.' : 'Error al confirmar el pedido. Intente nuevamente.');
+    }
+  };
 
   return (
     <div className="p-6 bg-pastel-cream rounded-2xl shadow-2xl space-y-6">
@@ -213,7 +216,7 @@ export default function AddEditPedidos({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium">Método de entrega</label>
+          <label className="block text-sm font-medium">Metodo de entrega</label>
           <select
             className="w-full rounded-md border px-3 py-2 text-sm"
             value={tipoEntrega}
@@ -225,16 +228,16 @@ export default function AddEditPedidos({
               }
             }}
           >
-            <option value="">Seleccionar…</option>
+            <option value="">Seleccionar...</option>
             <option value="retiro">Retiro</option>
-            <option value="envio_casa_cliente">Envío - Casa cliente</option>
-            <option value="envio_otra_direccion">Envío - Otra dirección</option>
+            <option value="envio_casa_cliente">Envio - Casa cliente</option>
+            <option value="envio_otra_direccion">Envio - Otra direccion</option>
           </select>
         </div>
         {tipoEntrega === 'envio_otra_direccion' && (
           <div>
             <label className="block text-sm font-medium">
-              Dirección de entrega
+              Direccion de entrega
             </label>
             <Input
               type="text"
@@ -360,3 +363,4 @@ export default function AddEditPedidos({
     </div>
   );
 }
+

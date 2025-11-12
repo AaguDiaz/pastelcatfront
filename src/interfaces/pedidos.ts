@@ -1,8 +1,15 @@
 export type ProductoTipo = 'torta' | 'bandeja';
 
 export interface Cliente {
+  /** Alias local de `id_perfil`, se mantiene `id` para no romper componentes existentes. */
   id: number;
+  id_perfil: number;
   nombre: string;
+  telefono?: string | null;
+  direccion?: string | null;
+  dni?: string | null;
+  is_active?: boolean;
+  user_id?: string | null;
 }
 
 export interface Producto {
@@ -25,7 +32,7 @@ export interface ItemPedido {
 }
 
 export interface PedidoPayload {
-  id_cliente: number;
+  id_perfil: number;
   fecha_entrega: string;
   tipo_entrega: string;
   direccion_entrega: string | null;

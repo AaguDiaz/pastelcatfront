@@ -176,7 +176,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <ShieldCheck size={16} />
                   </div>
                   <div className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
-                    <span>👥 Usuarios</span>
+                    <Link 
+                      href="/usuarios"
+                      className="hover:underline cursor-pointer"
+                      onClick={closeSidebar}>
+                      👥 Usuarios
+                    </Link>
                     <Users size={16} />
                   </div>
                 </div>

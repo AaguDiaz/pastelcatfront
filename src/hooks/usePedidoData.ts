@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Cliente, Producto, Pedido, PedidoPayload, ItemPedido} from '@/interfaces/pedidos';
-import { ApiPedido as ApiPedidoFromBackend, ApiPedidoCompleto, ApiPedidoDetalle } from '@/interfaces/api';
+import { ApiPedido as ApiPedidoFromBackend, ApiPedidoCompleto, ApiPedidoDetalle, ApiPerfil } from '@/interfaces/api';
 import { debugFetch } from '@/lib/debugFetch';
 import {api} from '@/lib/api';
 
@@ -81,22 +81,43 @@ const usePedidoData = () => {
     return 'pendiente';
   }, []);
 
+  const buildClienteFromPedido = useCallback((p: ApiPedidoFromBackend | ApiPedidoCompleto): Cliente => {
+    const perfil = (p as ApiPedidoCompleto)?.perfil as ApiPerfil | null | undefined;
+    const nestedCliente = typeof p.cliente === 'object' && p.cliente !== null ? p.cliente : undefined;
+    const legacyId = (p as { id_cliente?: number }).id_cliente;
+    const rawId = p.id_perfil ?? perfil?.id_perfil ?? legacyId ?? nestedCliente?.id ?? 0;
+    const idPerfil = Number(rawId) || 0;
+    const nombreCliente =
+      p.nombre ??
+      p.cliente_nombre ??
+      nestedCliente?.nombre ??
+      perfil?.nombre ??
+      '';
+
+    return {
+      id: idPerfil,
+      id_perfil: idPerfil,
+      nombre: nombreCliente,
+      telefono: perfil?.telefono ?? null,
+      direccion: perfil?.direccion ?? null,
+      dni: perfil?.dni ?? null,
+      is_active: typeof perfil?.is_active === 'boolean' ? perfil.is_active : undefined,
+      user_id: perfil?.id ?? null,
+    };
+  }, []);
+
   const normalizePedido = useCallback((p: ApiPedidoFromBackend): Pedido => {
-    const nombreCliente = p.nombre ?? p.cliente_nombre ?? (typeof p.cliente === 'object' ? p.cliente?.nombre : undefined) ?? '';
+    const cliente = buildClienteFromPedido(p);
     const total = p.total_final ?? p.total;
     return {
       id: Number(p.id_pedido ?? p.id ?? 0),
-      cliente: {
-        // El backend no devuelve id de cliente en la lista; lo dejamos en 0
-        id: Number((typeof p.cliente === 'object' ? p.cliente?.id : undefined) ?? (p as { id_cliente?: number }).id_cliente ?? 0) || 0,
-        nombre: nombreCliente ?? '',
-      },
+      cliente,
       fecha_entrega: p.fecha_entrega || '',
       total: Number(total ?? 0),
       observaciones: (p.observaciones ?? null) as string | null,
       estado: normalizeEstado(p.estado),
     };
-  }, [normalizeEstado]);
+  }, [normalizeEstado, buildClienteFromPedido]);
 
   const loadPedidos = useCallback(
     async (opts?: { page?: number; estado?: string | null }) => {
@@ -127,10 +148,7 @@ const usePedidoData = () => {
       // Usamos el endpoint completo para obtener pedido_detalles
       const p = await fetchWithAuth<ApiPedidoCompleto>(`${API_BASE_URL}/pedidos/${id}/completo`);
 
-      const cliente: Cliente = {
-        id: Number(p.cliente?.id ?? p.id_cliente ?? 0) || 0,
-        nombre: p.cliente?.nombre ?? p.nombre ?? '',
-      };
+      const cliente = buildClienteFromPedido(p);
 
       const tipoEntregaRaw = String(p.tipo_entrega ?? '').toLowerCase().trim();
       const mapEntrega = (raw: string): TipoEntrega => {
@@ -181,17 +199,14 @@ const usePedidoData = () => {
       setEditDraft(null);
       setIsEditing(false);
     }
-  }, [fetchWithAuth]);
+  }, [fetchWithAuth, buildClienteFromPedido]);
 
   // Obtener pedido completo (para ver detalles) sin activar modo edición
   const getPedidoCompleto = useCallback(async (id: number) => {
     try {
       const p = await fetchWithAuth<ApiPedidoCompleto>(`${API_BASE_URL}/pedidos/${id}/completo`);
 
-      const cliente: Cliente = {
-        id: Number(p.cliente?.id ?? p.id_cliente ?? 0) || 0,
-        nombre: p.cliente?.nombre ?? p.nombre ?? '',
-      };
+      const cliente = buildClienteFromPedido(p);
       // Normalizar items igual que en startEditPedido
       const detalles: ApiPedidoDetalle[] = Array.isArray(p.pedido_detalles) ? p.pedido_detalles : [];
       const items = detalles.map((d) => {
@@ -234,7 +249,7 @@ const usePedidoData = () => {
       console.error('Error al obtener pedido completo', e);
       throw e;
     }
-  }, [fetchWithAuth, normalizeEstado]);
+  }, [fetchWithAuth, normalizeEstado, buildClienteFromPedido]);
 
   const clearEdit = useCallback(() => {
     setEditDraft(null);
@@ -242,7 +257,7 @@ const usePedidoData = () => {
   }, []);
 
   interface PedidoUpdateBody {
-    id_cliente?: number;
+    id_perfil?: number;
     fecha_entrega: string;
     tipo_entrega: string;
     direccion_entrega: string | null;
@@ -299,20 +314,39 @@ const usePedidoData = () => {
   }, []);
 
   interface RawCliente {
-    id?: number;
+    id?: number | string | null;
     id_cliente?: number;
-    nombre: string;
+    id_perfil?: number;
+    nombre?: string;
+    telefono?: string | null;
+    direccion?: string | null;
+    dni?: string | null;
+    is_active?: boolean;
   }
 
-  const normalizeCliente = useCallback((c: RawCliente): Cliente => ({
-    id: Number(c.id ?? c.id_cliente),
-    nombre: c.nombre,
-  }), []);
+  const normalizeCliente = useCallback((c: RawCliente): Cliente => {
+    const numericIdSource =
+      c.id_perfil ??
+      c.id_cliente ??
+      (typeof c.id === 'number' ? c.id : 0) ??
+      0;
+    const idPerfil = Number(numericIdSource) || 0;
+    return {
+      id: idPerfil,
+      id_perfil: idPerfil,
+      nombre: c.nombre ?? '',
+      telefono: c.telefono ?? null,
+      direccion: c.direccion ?? null,
+      dni: c.dni ?? null,
+      is_active: typeof c.is_active === 'boolean' ? c.is_active : undefined,
+      user_id: typeof c.id === 'string' ? c.id : undefined,
+    };
+  }, []);
 
   const loadClientes = useCallback(async () => {
     try {
       const result = await fetchWithAuth<{ data?: RawCliente[] }>(
-        `${API_BASE_URL}/clientes?activo=true&page=${clientePage}&pageSize=10&search=${encodeURIComponent(clienteSearch)}`
+        `${API_BASE_URL}/clientes?is_active=true&page=${clientePage}&pageSize=10&search=${encodeURIComponent(clienteSearch)}`
       );
       const raw = (result.data ?? []) as RawCliente[];
       const normalized = raw.map(normalizeCliente);

@@ -23,18 +23,30 @@ export interface ApiRecetaIngrediente {
     precio: number;
 }
 
+export interface ApiPerfil {
+  id?: string | null; // user_id (uuid) si tiene cuenta
+  id_perfil?: number;
+  nombre?: string;
+  telefono?: string | null;
+  direccion?: string | null;
+  dni?: string | null;
+  is_active?: boolean;
+}
+
 export interface ApiPedido {
-    id?: number;
-    id_pedido?: number;
-    nombre?: string; // nombre del cliente aplanado
-    cliente?: { id?: number; nombre?: string } | string;
-    cliente_nombre?: string;
-    fecha_entrega?: string;
-    total?: number;
-    total_final?: number;
-    observaciones?: string | null;
-    estado?: string | { estado: string };
-    [key: string]: unknown;
+  id?: number;
+  id_pedido?: number;
+  id_perfil?: number;
+  nombre?: string; // nombre del cliente aplanado
+  cliente?: { id?: number; nombre?: string } | string;
+  cliente_nombre?: string;
+  perfil?: ApiPerfil | null;
+  fecha_entrega?: string;
+  total?: number;
+  total_final?: number;
+  observaciones?: string | null;
+  estado?: string | { estado: string };
+  [key: string]: unknown;
 }
 
 export interface ApiTortaExtended extends ApiTorta {
@@ -63,21 +75,14 @@ export interface ApiPedidoDetalle {
   bandeja?: ApiBandeja;
 }
 
-export interface ApiPedidoCompleto {
-  id?: number;
-  id_pedido?: number;
-  id_cliente?: number;
+export interface ApiPedidoCompleto extends ApiPedido {
   cliente?: { id?: number; nombre?: string };
-  nombre?: string;
-  fecha_entrega?: string;
   fecha_creacion?: string;
   created_at?: string;
   total_items?: number;
   total_descuento?: number;
   total_final?: number;
-  observaciones?: string | null;
   tipo_entrega?: string;
   direccion_entrega?: string | null;
-  estado?: string | { estado: string };
   pedido_detalles?: ApiPedidoDetalle[];
 }
