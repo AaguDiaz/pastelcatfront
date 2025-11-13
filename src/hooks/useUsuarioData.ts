@@ -8,6 +8,7 @@ import {
   UsuarioFilter,
   UsuarioFormState,
 } from '@/interfaces/usuarios';
+import { Grupo, Permiso } from '@/interfaces/permisos';
 
 const API_BASE_URL = api;
 const PAGE_SIZE = 10;
@@ -28,10 +29,25 @@ interface UsuariosResponse {
   totalItems?: number;
 }
 
+interface PaginatedResponse<T> {
+  data?: T[];
+  totalPages?: number;
+  currentPage?: number;
+  totalItems?: number;
+}
+
 type SimpleModalState = {
   open: boolean;
   message: string;
 };
+
+interface UsuarioGrupoListado {
+  grupos?: Grupo[];
+}
+
+interface UsuarioPermisoListado {
+  permisos?: Permiso[];
+}
 
 const normalizeText = (value: string) => value.trim();
 const optionalText = (value: string) => {
@@ -82,6 +98,20 @@ export const useUsuarioData = () => {
     open: boolean;
     usuario: Usuario | null;
   }>({ open: false, usuario: null });
+  const [permisosModal, setPermisosModal] = useState<{
+    open: boolean;
+    usuario: Usuario | null;
+  }>({ open: false, usuario: null });
+  const [permModalLoading, setPermModalLoading] = useState(false);
+  const [gruposCatalog, setGruposCatalog] = useState<Grupo[]>([]);
+  const [permisosCatalog, setPermisosCatalog] = useState<Permiso[]>([]);
+  const [usuarioGruposAsignados, setUsuarioGruposAsignados] = useState<Grupo[]>([]);
+  const [usuarioPermisosAsignados, setUsuarioPermisosAsignados] = useState<Permiso[]>([]);
+  const [usuarioGruposOriginalIds, setUsuarioGruposOriginalIds] = useState<number[]>([]);
+  const [usuarioPermisosOriginalIds, setUsuarioPermisosOriginalIds] = useState<number[]>([]);
+  const [permFilterModulo, setPermFilterModulo] = useState<string>('Todos');
+  const [selectedGrupoId, setSelectedGrupoId] = useState('');
+  const [selectedPermisoId, setSelectedPermisoId] = useState('');
 
   const fetchWithAuth = useCallback(
     async <T,>(endpoint: string, options: RequestInit = {}): Promise<T> => {
@@ -116,6 +146,80 @@ export const useUsuarioData = () => {
     },
     [],
   );
+
+  const fetchGruposCatalog = useCallback(async () => {
+    const params = new URLSearchParams({
+      page: '1',
+      pageSize: '200',
+    });
+    const response = await fetchWithAuth<PaginatedResponse<Grupo>>(
+      `${API_BASE_URL}/grupos?${params.toString()}`,
+    );
+    setGruposCatalog(response.data ?? []);
+  }, [fetchWithAuth]);
+
+  const fetchPermisosCatalog = useCallback(async () => {
+    const params = new URLSearchParams({
+      page: '1',
+      pageSize: '500',
+    });
+    const response = await fetchWithAuth<PaginatedResponse<Permiso>>(
+      `${API_BASE_URL}/permisos?${params.toString()}`,
+    );
+    setPermisosCatalog(response.data ?? []);
+  }, [fetchWithAuth]);
+
+  const fetchUsuarioGruposAsignados = useCallback(
+    async (idPerfil: number) => {
+      const response = await fetchWithAuth<UsuarioGrupoListado>(
+        `${API_BASE_URL}/usuarios/${idPerfil}/grupos`,
+      );
+      const grupos = response.grupos ?? [];
+      setUsuarioGruposAsignados(grupos);
+      setUsuarioGruposOriginalIds(grupos.map((grupo) => grupo.id_grupo));
+    },
+    [fetchWithAuth],
+  );
+
+  const fetchUsuarioPermisosAsignados = useCallback(
+    async (idPerfil: number) => {
+      const response = await fetchWithAuth<UsuarioPermisoListado>(
+        `${API_BASE_URL}/usuarios/${idPerfil}/permisos`,
+      );
+      const permisos = response.permisos ?? [];
+      setUsuarioPermisosAsignados(permisos);
+      setUsuarioPermisosOriginalIds(permisos.map((permiso) => permiso.id_permiso));
+    },
+    [fetchWithAuth],
+  );
+
+  const resetPermisosModalSelections = useCallback(() => {
+    setSelectedGrupoId('');
+    setSelectedPermisoId('');
+    setPermFilterModulo('Todos');
+  }, []);
+
+  const restoreStageFromOriginal = useCallback(() => {
+    const restoredGrupos = gruposCatalog.filter((grupo) =>
+      usuarioGruposOriginalIds.includes(grupo.id_grupo),
+    );
+    const restoredPermisos = permisosCatalog.filter((permiso) =>
+      usuarioPermisosOriginalIds.includes(permiso.id_permiso),
+    );
+    setUsuarioGruposAsignados(restoredGrupos);
+    setUsuarioPermisosAsignados(restoredPermisos);
+  }, [gruposCatalog, permisosCatalog, usuarioGruposOriginalIds, usuarioPermisosOriginalIds]);
+
+  const clearPermisosModalState = useCallback(() => {
+    restoreStageFromOriginal();
+    resetPermisosModalSelections();
+  }, [resetPermisosModalSelections, restoreStageFromOriginal]);
+
+  const closePermisosModal = useCallback(() => {
+    restoreStageFromOriginal();
+    setPermisosModal({ open: false, usuario: null });
+    resetPermisosModalSelections();
+  }, [resetPermisosModalSelections, restoreStageFromOriginal]);
 
   const showErrorModal = useCallback((message: string) => {
     setModalError({ open: true, message });
@@ -372,24 +476,235 @@ export const useUsuarioData = () => {
     [showErrorModal],
   );
 
-  const handleGestionPermisos = useCallback(() => {
-    showSuccessModal('Gestion de permisos en construccion.');
-  }, [showSuccessModal]);
-
   const handleModificarPermisos = useCallback(
-    (usuario: Usuario) => {
-      showSuccessModal(
-        `Modificar permisos para ${usuario.nombre} estara disponible proximamente.`,
-      );
+    async (usuario: Usuario) => {
+      setPermisosModal({ open: true, usuario });
+      setPermModalLoading(true);
+      try {
+        await Promise.all([
+          fetchGruposCatalog(),
+          fetchPermisosCatalog(),
+          fetchUsuarioGruposAsignados(usuario.id_perfil),
+          fetchUsuarioPermisosAsignados(usuario.id_perfil),
+        ]);
+      } catch (err) {
+        showErrorModal(
+          err instanceof Error
+            ? err.message
+            : 'No se pudo cargar la gestion de permisos.',
+        );
+        setPermisosModal({ open: false, usuario: null });
+      } finally {
+        setPermModalLoading(false);
+      }
     },
-    [showSuccessModal],
+    [
+      fetchGruposCatalog,
+      fetchPermisosCatalog,
+      fetchUsuarioGruposAsignados,
+      fetchUsuarioPermisosAsignados,
+      showErrorModal,
+    ],
   );
+
+  const handleAgregarGrupoUsuario = useCallback(() => {
+    if (!selectedGrupoId) {
+      showErrorModal('Selecciona un grupo para asignar.');
+      return;
+    }
+    const grupo = gruposCatalog.find(
+      (item) => String(item.id_grupo) === selectedGrupoId,
+    );
+    if (!grupo) {
+      showErrorModal('El grupo seleccionado es invalido.');
+      return;
+    }
+    const already = usuarioGruposAsignados.some(
+      (g) => g.id_grupo === grupo.id_grupo,
+    );
+    if (already) {
+      showErrorModal('El grupo ya esta en la lista.');
+      return;
+    }
+    setUsuarioGruposAsignados((prev) => [...prev, grupo]);
+    setSelectedGrupoId('');
+  }, [
+    gruposCatalog,
+    selectedGrupoId,
+    showErrorModal,
+    usuarioGruposAsignados,
+  ]);
+
+  const handleQuitarGrupoUsuario = useCallback((grupoId: number) => {
+    setUsuarioGruposAsignados((prev) =>
+      prev.filter((grupo) => grupo.id_grupo !== grupoId),
+    );
+    setSelectedGrupoId('');
+  }, []);
+
+  const handleAgregarPermisoUsuario = useCallback(() => {
+    if (!selectedPermisoId) {
+      showErrorModal('Selecciona un permiso para asignar.');
+      return;
+    }
+    const permiso = permisosCatalog.find(
+      (item) => String(item.id_permiso) === selectedPermisoId,
+    );
+    if (!permiso) {
+      showErrorModal('El permiso seleccionado es invalido.');
+      return;
+    }
+    const already = usuarioPermisosAsignados.some(
+      (p) => p.id_permiso === permiso.id_permiso,
+    );
+    if (already) {
+      showErrorModal('El permiso ya esta en la lista.');
+      return;
+    }
+    setUsuarioPermisosAsignados((prev) => [...prev, permiso]);
+    setSelectedPermisoId('');
+  }, [
+    permisosCatalog,
+    selectedPermisoId,
+    showErrorModal,
+    usuarioPermisosAsignados,
+  ]);
+
+  const handleQuitarPermisoUsuario = useCallback((permisoId: number) => {
+    setUsuarioPermisosAsignados((prev) =>
+      prev.filter((permiso) => permiso.id_permiso !== permisoId),
+    );
+    setSelectedPermisoId('');
+  }, []);
 
   const pageControls = useMemo(() => {
     const prevDisabled = page <= 1;
     const nextDisabled = page >= totalPages;
     return { prevDisabled, nextDisabled };
   }, [page, totalPages]);
+
+  const permisosFiltrados = useMemo(() => {
+    if (permFilterModulo === 'Todos') {
+      return permisosCatalog;
+    }
+    const normalized = permFilterModulo.toLowerCase();
+    return permisosCatalog.filter(
+      (permiso) => permiso.modulo.toLowerCase() === normalized,
+    );
+  }, [permFilterModulo, permisosCatalog]);
+
+  useEffect(() => {
+    if (!selectedPermisoId) return;
+    const exists = permisosFiltrados.some(
+      (permiso) => String(permiso.id_permiso) === selectedPermisoId,
+    );
+    if (!exists) {
+      setSelectedPermisoId('');
+    }
+  }, [permisosFiltrados, selectedPermisoId]);
+
+  const handleConfirmPermisosUsuario = useCallback(async () => {
+    if (!permisosModal.usuario) {
+      showErrorModal('No se selecciono un usuario.');
+      return;
+    }
+
+    const grupoDeseadoIds = usuarioGruposAsignados.map((grupo) => grupo.id_grupo);
+    const permisoDeseadoIds = usuarioPermisosAsignados.map(
+      (permiso) => permiso.id_permiso,
+    );
+
+    const gruposAAgregar = grupoDeseadoIds.filter(
+      (id) => !usuarioGruposOriginalIds.includes(id),
+    );
+    const gruposAQuitar = usuarioGruposOriginalIds.filter(
+      (id) => !grupoDeseadoIds.includes(id),
+    );
+    const permisosAAgregar = permisoDeseadoIds.filter(
+      (id) => !usuarioPermisosOriginalIds.includes(id),
+    );
+    const permisosAQuitar = usuarioPermisosOriginalIds.filter(
+      (id) => !permisoDeseadoIds.includes(id),
+    );
+
+    try {
+      setPermModalLoading(true);
+      const usuarioId = permisosModal.usuario.id_perfil;
+
+      for (const grupoId of gruposAAgregar) {
+        await fetchWithAuth(`${API_BASE_URL}/usuarios/${usuarioId}/grupos`, {
+          method: 'POST',
+          body: JSON.stringify({ id_grupo: grupoId }),
+        });
+      }
+
+      for (const grupoId of gruposAQuitar) {
+        await fetchWithAuth(`${API_BASE_URL}/usuarios/${usuarioId}/grupos/${grupoId}`, {
+          method: 'DELETE',
+        });
+      }
+
+      for (const permisoId of permisosAAgregar) {
+        await fetchWithAuth(`${API_BASE_URL}/usuarios/${usuarioId}/permisos`, {
+          method: 'POST',
+          body: JSON.stringify({ id_permiso: permisoId }),
+        });
+      }
+
+      for (const permisoId of permisosAQuitar) {
+        await fetchWithAuth(
+          `${API_BASE_URL}/usuarios/${usuarioId}/permisos/${permisoId}`,
+          { method: 'DELETE' },
+        );
+      }
+
+      setUsuarioGruposOriginalIds(grupoDeseadoIds);
+      setUsuarioPermisosOriginalIds(permisoDeseadoIds);
+      showSuccessModal('Permisos del usuario actualizados.');
+      closePermisosModal();
+    } catch (err) {
+      showErrorModal(
+        err instanceof Error
+          ? err.message
+          : 'No se pudieron actualizar los permisos del usuario.',
+      );
+    } finally {
+      setPermModalLoading(false);
+    }
+  }, [
+    closePermisosModal,
+    fetchWithAuth,
+    permisosModal.usuario,
+    showErrorModal,
+    showSuccessModal,
+    usuarioGruposAsignados,
+    usuarioGruposOriginalIds,
+    usuarioPermisosAsignados,
+    usuarioPermisosOriginalIds,
+  ]);
+
+  const permisosModalState = {
+    open: permisosModal.open,
+    usuario: permisosModal.usuario,
+    loading: permModalLoading,
+    gruposOptions: gruposCatalog,
+    permisosOptions: permisosFiltrados,
+    moduloFilter: permFilterModulo,
+    setModuloFilter: setPermFilterModulo,
+    selectedGrupoId,
+    setSelectedGrupoId,
+    selectedPermisoId,
+    setSelectedPermisoId,
+    assignedGrupos: usuarioGruposAsignados,
+    assignedPermisos: usuarioPermisosAsignados,
+    onAddGrupo: handleAgregarGrupoUsuario,
+    onRemoveGrupo: handleQuitarGrupoUsuario,
+    onAddPermiso: handleAgregarPermisoUsuario,
+    onRemovePermiso: handleQuitarPermisoUsuario,
+    onClearSelections: clearPermisosModalState,
+    onConfirm: handleConfirmPermisosUsuario,
+    onClose: closePermisosModal,
+  };
 
   return {
     usuarios,
@@ -407,7 +722,6 @@ export const useUsuarioData = () => {
     startEdit,
     toggleActivo,
     handleChangePassword,
-    handleGestionPermisos,
     handleModificarPermisos,
     setSearch,
     setFilter,
@@ -418,6 +732,6 @@ export const useUsuarioData = () => {
     closeExitoModal,
     modalEliminar,
     handleEliminarResponse,
+    permisosModal: permisosModalState,
   };
 };
-
