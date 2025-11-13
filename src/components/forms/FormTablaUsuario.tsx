@@ -26,6 +26,7 @@ interface FormTablaUsuarioProps {
   onEdit: (usuario: Usuario) => void;
   onToggleActivo: (usuario: Usuario) => void;
   onModificarPermisos: (usuario: Usuario) => void;
+  onPromoverAdministrador: (usuario: Usuario) => void;
   onChangePassword: (usuario: Usuario) => void;
 }
 
@@ -49,6 +50,7 @@ const FormTablaUsuario = ({
   onEdit,
   onToggleActivo,
   onModificarPermisos,
+  onPromoverAdministrador,
   onChangePassword,
 }: FormTablaUsuarioProps) => {
   return (
@@ -140,17 +142,27 @@ const FormTablaUsuario = ({
                     <Button
                       type="button"
                       className="bg-pastel-yellow text-black hover:bg-yellow-400"
-                      onClick={() => onModificarPermisos(usuario)}
+                      onClick={() =>
+                        usuario.has_account
+                          ? onModificarPermisos(usuario)
+                          : onPromoverAdministrador(usuario)
+                      }
                     >
-                      <Pencil size={16} /> Modificar permisos
+                      {usuario.has_account ? (
+                        <>
+                          <Pencil size={16} /> Modificar permisos
+                        </>
+                      ) : (
+                        'Promover a administrador'
+                      )}
                     </Button>
                     <Button
                       type="button"
-                      className="bg-pastel-blue text-black hover:bg-blue-400"
+                      className="bg-pastel-green text-black hover:bg-green-400"
                       onClick={() => onChangePassword(usuario)}
                       disabled={!usuario.has_account}
                     >
-                      Cambio de contrasena
+                      Cambio de contraseña
                     </Button>
                   </div>
                 </td>
@@ -206,4 +218,3 @@ const FormTablaUsuario = ({
 };
 
 export default FormTablaUsuario;
-

@@ -32,7 +32,7 @@ export default function Login() {
         throw new Error(data.message || "Error al iniciar sesión");
       }
       localStorage.setItem("token", data.session.access_token);
-      router.push("/dashboard");
+      router.push("/");
     } catch (err: unknown){
       if (err instanceof Error) {
         setError(err.message);
