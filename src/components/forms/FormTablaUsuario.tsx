@@ -141,7 +141,6 @@ const FormTablaUsuario = ({
                       type="button"
                       className="bg-pastel-yellow text-black hover:bg-yellow-400"
                       onClick={() => onModificarPermisos(usuario)}
-                      disabled
                     >
                       <Pencil size={16} /> Modificar permisos
                     </Button>

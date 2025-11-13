@@ -44,9 +44,8 @@ const FormGestionUsuario = ({
         <Button
           type="button"
           variant="outline"
-          className="border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100"
+          className="border-neutral-300 bg-pastel-yellow text-neutral-700 hover:bg-yellow-400"
           onClick={onGestionPermisos}
-          disabled
         >
           Gestionar permisos
         </Button>
@@ -98,7 +97,7 @@ const FormGestionUsuario = ({
       <div className="grid gap-4 md:grid-cols-4">
         <div className="flex-1">
           <label className="block mb-1 font-medium">
-            Grupo
+            Tipo de usuario
           </label>
           <div>
             <Select
