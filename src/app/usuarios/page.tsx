@@ -28,7 +28,6 @@ const UsuariosPage = () => {
     cancelEdit,
     startEdit,
     toggleActivo,
-    handleChangePassword,
     handleModificarPermisos,
     handlePromoverAdministrador,
     setSearch,
@@ -83,7 +82,6 @@ const UsuariosPage = () => {
         onToggleActivo={toggleActivo}
         onModificarPermisos={handleModificarPermisos}
         onPromoverAdministrador={handlePromoverAdministrador}
-        onChangePassword={handleChangePassword}
       />
 
       <div

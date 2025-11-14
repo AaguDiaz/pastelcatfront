@@ -484,18 +484,6 @@ const closePermisosModal = useCallback(() => {
     [closeEliminarModal, deactivateUsuario, modalEliminar.usuario],
   );
 
-  const handleChangePassword = useCallback(
-    (usuario: Usuario) => {
-      if (!usuario.has_account) {
-        showErrorModal('El usuario no tiene cuenta para resetear contrasena.');
-        return;
-      }
-      showErrorModal(
-        'La funcionalidad de cambio de contrasena estara disponible proximamente.',
-      );
-    },
-    [showErrorModal],
-  );
 
   const handleModificarPermisos = useCallback(
     async (usuario: Usuario) => {
@@ -816,7 +804,6 @@ const closePermisosModal = useCallback(() => {
     cancelEdit: resetForm,
     startEdit,
     toggleActivo,
-    handleChangePassword,
     handleModificarPermisos,
     handlePromoverAdministrador,
     setSearch,
