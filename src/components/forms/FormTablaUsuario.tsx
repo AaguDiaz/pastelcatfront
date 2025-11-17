@@ -26,7 +26,7 @@ interface FormTablaUsuarioProps {
   onEdit: (usuario: Usuario) => void;
   onToggleActivo: (usuario: Usuario) => void;
   onModificarPermisos: (usuario: Usuario) => void;
-  onChangePassword: (usuario: Usuario) => void;
+  onPromoverAdministrador: (usuario: Usuario) => void;
 }
 
 const filterOptions: { label: string; value: UsuarioFilter }[] = [
@@ -49,7 +49,7 @@ const FormTablaUsuario = ({
   onEdit,
   onToggleActivo,
   onModificarPermisos,
-  onChangePassword,
+  onPromoverAdministrador,
 }: FormTablaUsuarioProps) => {
   return (
     <section className="space-y-4 rounded-3xl border border-neutral-200 bg-pastel-cream p-6 shadow-xl">
@@ -140,17 +140,19 @@ const FormTablaUsuario = ({
                     <Button
                       type="button"
                       className="bg-pastel-yellow text-black hover:bg-yellow-400"
-                      onClick={() => onModificarPermisos(usuario)}
+                      onClick={() =>
+                        usuario.has_account
+                          ? onModificarPermisos(usuario)
+                          : onPromoverAdministrador(usuario)
+                      }
                     >
-                      <Pencil size={16} /> Modificar permisos
-                    </Button>
-                    <Button
-                      type="button"
-                      className="bg-pastel-blue text-black hover:bg-blue-400"
-                      onClick={() => onChangePassword(usuario)}
-                      disabled={!usuario.has_account}
-                    >
-                      Cambio de contrasena
+                      {usuario.has_account ? (
+                        <>
+                          <Pencil size={16} /> Modificar permisos
+                        </>
+                      ) : (
+                        'Promover a administrador'
+                      )}
                     </Button>
                   </div>
                 </td>
@@ -206,4 +208,3 @@ const FormTablaUsuario = ({
 };
 
 export default FormTablaUsuario;
-

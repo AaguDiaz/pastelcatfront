@@ -8,6 +8,7 @@ import ModalError from '@/components/modals/error';
 import ModalExito from '@/components/modals/exito';
 import EliminarModal from '@/components/modals/eliminar';
 import UsuarioPermisosModal from '@/components/modals/usuarioPermisos';
+import UsuarioPromoverModal from '@/components/modals/usuarioPromover';
 import { useUsuarioData } from '@/hooks/useUsuarioData';
 import { usePermisosData } from '@/hooks/usePermisosData';
 
@@ -27,8 +28,8 @@ const UsuariosPage = () => {
     cancelEdit,
     startEdit,
     toggleActivo,
-    handleChangePassword,
     handleModificarPermisos,
+    handlePromoverAdministrador,
     setSearch,
     setFilter,
     setPage,
@@ -39,6 +40,7 @@ const UsuariosPage = () => {
     modalEliminar,
     handleEliminarResponse,
     permisosModal,
+    promoverModal,
   } = useUsuarioData();
 
   const { grupoState, modals: gruposModals } = usePermisosData();
@@ -79,7 +81,7 @@ const UsuariosPage = () => {
         onEdit={startEdit}
         onToggleActivo={toggleActivo}
         onModificarPermisos={handleModificarPermisos}
-        onChangePassword={handleChangePassword}
+        onPromoverAdministrador={handlePromoverAdministrador}
       />
 
       <div
@@ -162,6 +164,21 @@ const UsuariosPage = () => {
           contexto={gruposModals.eliminar.contexto || 'permisos'}
           mensaje={gruposModals.eliminar.mensaje}
           onClose={gruposModals.onEliminarResponse}
+        />
+      )}
+
+      {promoverModal.open && (
+        <UsuarioPromoverModal
+          open={promoverModal.open}
+          loading={promoverModal.loading}
+          usuarioNombre={promoverModal.usuario?.nombre ?? ''}
+          email={promoverModal.email}
+          dni={promoverModal.dni}
+          requireDni={promoverModal.requireDni}
+          onEmailChange={promoverModal.onEmailChange}
+          onDniChange={promoverModal.onDniChange}
+          onConfirm={promoverModal.onConfirm}
+          onClose={promoverModal.onClose}
         />
       )}
     </main>

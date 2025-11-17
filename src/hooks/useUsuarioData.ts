@@ -102,6 +102,13 @@ export const useUsuarioData = () => {
     open: boolean;
     usuario: Usuario | null;
   }>({ open: false, usuario: null });
+  const [promoverModal, setPromoverModal] = useState<{
+    open: boolean;
+    usuario: Usuario | null;
+    email: string;
+    dni: string;
+    loading: boolean;
+  }>({ open: false, usuario: null, email: '', dni: '', loading: false });
   const [permModalLoading, setPermModalLoading] = useState(false);
   const [gruposCatalog, setGruposCatalog] = useState<Grupo[]>([]);
   const [permisosCatalog, setPermisosCatalog] = useState<Permiso[]>([]);
@@ -215,11 +222,25 @@ export const useUsuarioData = () => {
     resetPermisosModalSelections();
   }, [resetPermisosModalSelections, restoreStageFromOriginal]);
 
-  const closePermisosModal = useCallback(() => {
+const closePermisosModal = useCallback(() => {
     restoreStageFromOriginal();
     setPermisosModal({ open: false, usuario: null });
     resetPermisosModalSelections();
   }, [resetPermisosModalSelections, restoreStageFromOriginal]);
+
+  const openPromoverModal = useCallback((usuario: Usuario) => {
+    setPromoverModal({
+      open: true,
+      usuario,
+      email: usuario.email ?? '',
+      dni: usuario.dni ?? '',
+      loading: false,
+    });
+  }, []);
+
+  const closePromoverModal = useCallback(() => {
+    setPromoverModal({ open: false, usuario: null, email: '', dni: '', loading: false });
+  }, []);
 
   const showErrorModal = useCallback((message: string) => {
     setModalError({ open: true, message });
@@ -463,18 +484,6 @@ export const useUsuarioData = () => {
     [closeEliminarModal, deactivateUsuario, modalEliminar.usuario],
   );
 
-  const handleChangePassword = useCallback(
-    (usuario: Usuario) => {
-      if (!usuario.has_account) {
-        showErrorModal('El usuario no tiene cuenta para resetear contrasena.');
-        return;
-      }
-      showErrorModal(
-        'La funcionalidad de cambio de contrasena estara disponible proximamente.',
-      );
-    },
-    [showErrorModal],
-  );
 
   const handleModificarPermisos = useCallback(
     async (usuario: Usuario) => {
@@ -506,6 +515,21 @@ export const useUsuarioData = () => {
       showErrorModal,
     ],
   );
+
+  const handlePromoverAdministrador = useCallback(
+    (usuario: Usuario) => {
+      openPromoverModal(usuario);
+    },
+    [openPromoverModal],
+  );
+
+  const handlePromoverEmailChange = useCallback((value: string) => {
+    setPromoverModal((prev) => ({ ...prev, email: value }));
+  }, []);
+
+  const handlePromoverDniChange = useCallback((value: string) => {
+    setPromoverModal((prev) => ({ ...prev, dni: value }));
+  }, []);
 
   const handleAgregarGrupoUsuario = useCallback(() => {
     if (!selectedGrupoId) {
@@ -683,6 +707,52 @@ export const useUsuarioData = () => {
     usuarioPermisosOriginalIds,
   ]);
 
+  const handleConfirmPromover = useCallback(async () => {
+    if (!promoverModal.usuario) {
+      showErrorModal('No se selecciono un usuario.');
+      return;
+    }
+
+    const safeEmail = normalizeText(promoverModal.email).toLowerCase();
+    const safeDni = normalizeText(promoverModal.dni);
+
+    if (!safeEmail || !safeDni) {
+      showErrorModal('Email y DNI son obligatorios.');
+      return;
+    }
+
+    try {
+      setPromoverModal((prev) => ({ ...prev, loading: true }));
+      await fetchWithAuth(
+        `${API_BASE_URL}/usuarios/${promoverModal.usuario.id_perfil}/promover`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ email: safeEmail, dni: safeDni }),
+        },
+      );
+      showSuccessModal('Usuario promovido a administrador.');
+      closePromoverModal();
+      fetchUsuarios();
+    } catch (err) {
+      showErrorModal(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo promover al usuario.',
+      );
+    } finally {
+      setPromoverModal((prev) => ({ ...prev, loading: false }));
+    }
+  }, [
+    closePromoverModal,
+    fetchUsuarios,
+    fetchWithAuth,
+    promoverModal.dni,
+    promoverModal.email,
+    promoverModal.usuario,
+    showErrorModal,
+    showSuccessModal,
+  ]);
+
   const permisosModalState = {
     open: permisosModal.open,
     usuario: permisosModal.usuario,
@@ -706,6 +776,19 @@ export const useUsuarioData = () => {
     onClose: closePermisosModal,
   };
 
+  const promoverModalState = {
+    open: promoverModal.open,
+    usuario: promoverModal.usuario,
+    loading: promoverModal.loading,
+    email: promoverModal.email,
+    dni: promoverModal.dni,
+    requireDni: !promoverModal.usuario?.dni,
+    onEmailChange: handlePromoverEmailChange,
+    onDniChange: handlePromoverDniChange,
+    onConfirm: handleConfirmPromover,
+    onClose: closePromoverModal,
+  };
+
   return {
     usuarios,
     loading,
@@ -721,8 +804,8 @@ export const useUsuarioData = () => {
     cancelEdit: resetForm,
     startEdit,
     toggleActivo,
-    handleChangePassword,
     handleModificarPermisos,
+    handlePromoverAdministrador,
     setSearch,
     setFilter,
     setPage,
@@ -733,5 +816,6 @@ export const useUsuarioData = () => {
     modalEliminar,
     handleEliminarResponse,
     permisosModal: permisosModalState,
+    promoverModal: promoverModalState,
   };
 };

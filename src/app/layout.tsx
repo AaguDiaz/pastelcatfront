@@ -4,9 +4,11 @@ import Link from 'next/link';
 import './globals.css';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Calendar, LayoutDashboard, ShieldCheck, Users } from 'lucide-react';
+
+const PUBLIC_ROUTES = ['/login', '/forgot-password'];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -15,25 +17,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [openPasteleria, setOpenPasteleria] = useState(false);
   const [openCatering, setOpenCatering] = useState(false);
 
-  const checkAuth= () => {
-    const token = localStorage.getItem("token");
+  const checkAuth = useCallback(() => {
+    const token = localStorage.getItem('token');
+    const pathname = window.location.pathname;
+    const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
     setIsAuthenticated(!!token);
-    if (!token && window.location.pathname !== "/login") {
-      router.push("/login");
+    if (!token && !isPublicRoute) {
+      router.push('/login');
     }
-  };
+  }, [router]);
 
   useEffect(() => {
     checkAuth();
 
     const handleStorageChange = () => checkAuth();
-    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener('storage', handleStorageChange);
     const interval = setInterval(checkAuth, 1000);
     return () => {
-      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);
-    }
-  }, [router, checkAuth]);
+    };
+  }, [checkAuth]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
