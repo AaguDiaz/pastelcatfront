@@ -157,7 +157,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       className="pl-4 mb-4 space-y-1"
                     >
                       <li className="hover:underline cursor-pointer">🎉 Eventos</li>
-                      <li className="hover:underline cursor-pointer">🧂 Insumos</li>
+                      <li className="hover:underline cursor-pointer"><Link
+                          href="/articulos"
+                          className="hover:underline cursor-pointer"
+                          onClick={closeSidebar}
+                        >
+                          🧂 Artículos
+                        </Link></li>
                     </motion.ul>
                   )}
                 </AnimatePresence>
