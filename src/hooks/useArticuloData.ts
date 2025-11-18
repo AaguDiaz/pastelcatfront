@@ -8,7 +8,7 @@ import { Articulo, ArticuloFormState, Categoria } from '@/interfaces/articulos';
 const API_BASE_URL = api;
 const PAGE_SIZE = 10;
 const CATEGORIA_PAGE_SIZE = 200;
-const CATEGORY_INACTIVE_ID = 1;
+export const CATEGORY_INACTIVE_ID = 1;
 
 type SimpleModalState = {
   open: boolean;

@@ -9,6 +9,7 @@ import EstadoPedidoModal from '@/components/modals/pedido/EstadoPedidoModal';
 import DetallePedidoModal from '@/components/modals/pedido/DetallePedidoModal';
 import EliminarModal from '@/components/modals/eliminar';
 import ModalError from '@/components/modals/error';
+import ModalExito from '@/components/modals/exito';
 
 interface FormTablaPedidoProps {
   mode?: 'pedido' | 'evento';
@@ -42,6 +43,7 @@ export default function FormTablaPedido({
   const [detalleModalFor, setDetalleModalFor] = useState<number | null>(null);
   const [eliminarModalFor, setEliminarModalFor] = useState<{ id: number; nombre: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
     loadPedidos({ page: 1, estado: null });
@@ -66,7 +68,27 @@ export default function FormTablaPedido({
   const handleEdit = async (id: number) => {
     await startEditPedido(id);
   };
+  const getErrorMessage = (err: unknown): string => {
+    if (err instanceof Error) {
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed?.error?.message) return parsed.error.message as string;
+        if (typeof parsed?.error === 'string') return parsed.error;
+      } catch {
+        // ignore parse errors
+      }
+      return err.message;
+    }
+    if (typeof err === 'string') return err;
+    return 'Ocurrió un error. Intente nuevamente.';
+  };
+
   const handleChangeEstado = (id: number, estado: string) => {
+    const current = String(estado || '').toLowerCase();
+    if (mode === 'evento' && current === 'cerrado') {
+      setErrorMsg('No se puede modificar un evento cerrado.');
+      return;
+    }
     setEstadoModalFor({ id, estado });
   };
   const handleVerDetalles = (id: number) => {
@@ -220,7 +242,13 @@ export default function FormTablaPedido({
               setErrorMsg('Estado inválido');
               return;
             }
-            await updatePedidoEstado(estadoModalFor.id, idEstado);
+            try {
+              await updatePedidoEstado(estadoModalFor.id, idEstado);
+              setSuccessMsg(`El estado del ${labelLower} se actualizó correctamente.`);
+              setEstadoModalFor(null);
+            } catch (err) {
+              setErrorMsg(getErrorMessage(err));
+            }
           }}
         />
       )}
@@ -244,8 +272,9 @@ export default function FormTablaPedido({
             if (respuesta) {
               try {
                 await deletePedido(eliminarModalFor.id);
-              } catch {
-                setErrorMsg(`No se pudo eliminar el ${labelLower}.`);
+                setSuccessMsg(`El ${labelLower} se eliminó correctamente.`);
+              } catch (err) {
+                setErrorMsg(getErrorMessage(err));
               }
             }
             setEliminarModalFor(null);
@@ -258,6 +287,13 @@ export default function FormTablaPedido({
           titulo="Error"
           mensaje={errorMsg}
           onClose={() => setErrorMsg(null)}
+        />
+      )}
+      {successMsg && (
+        <ModalExito
+          titulo="Operación exitosa"
+          mensaje={successMsg}
+          onClose={() => setSuccessMsg(null)}
         />
       )}
     </div>

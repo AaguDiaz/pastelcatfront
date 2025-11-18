@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { usePedidoOrEventoData } from '@/hooks/usePedidoOrEventoData';
@@ -24,6 +24,20 @@ interface AddEditPedidosProps {
 const DEFAULT_TYPES: Record<'pedido' | 'evento', ProductoTipo[]> = {
   pedido: ['torta', 'bandeja'],
   evento: ['torta', 'bandeja', 'articulo'],
+};
+
+type TipoEntrega = '' | 'retiro' | 'envio_casa_cliente' | 'envio_otra_direccion';
+
+const DELIVERY_OPTIONS: Record<'pedido' | 'evento', { value: TipoEntrega; label: string; requiresAddress: boolean }[]> = {
+  pedido: [
+    { value: 'retiro', label: 'Retiro en el local', requiresAddress: false },
+    { value: 'envio_casa_cliente', label: 'Envio a casa del cliente', requiresAddress: true },
+    { value: 'envio_otra_direccion', label: 'Envio a otra direccion', requiresAddress: true },
+  ],
+  evento: [
+    { value: 'retiro', label: 'En nuestra sucursal', requiresAddress: false },
+    { value: 'envio_otra_direccion', label: 'Otra direccion', requiresAddress: true },
+  ],
 };
 
 export default function AddEditPedidos({
@@ -66,6 +80,14 @@ export default function AddEditPedidos({
   const labelLower = label.toLowerCase();
   const allowedTypes = allowedProductTypes ?? DEFAULT_TYPES[mode];
   const allowArticulos = allowedTypes.includes('articulo');
+  const currentDeliveryOptions = DELIVERY_OPTIONS[mode];
+  const handleChangeTipoProducto = useCallback(
+    (tipo: ProductoTipo) => {
+      if (mode !== 'evento' && tipo === 'articulo') return;
+      setTipoProducto(tipo);
+    },
+    [mode, setTipoProducto],
+  );
 
   const [clienteModal, setClienteModal] = useState(false);
   const [productoModal, setProductoModal] = useState(false);
@@ -74,10 +96,10 @@ export default function AddEditPedidos({
   const [direccionEntrega, setDireccionEntrega] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [descuento, setDescuento] = useState('0');
-  type TipoEntrega =
-    '' | 'retiro' | 'envio_casa_cliente' | 'envio_otra_direccion';
   const [tipoEntrega, setTipoEntrega] = useState<TipoEntrega>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const selectedDeliveryOption = currentDeliveryOptions.find((opt) => opt.value === tipoEntrega);
+  const requiereDireccion = Boolean(selectedDeliveryOption?.requiresAddress);
 
   const subtotal = items.reduce(
     (sum, item) => sum + item.precio * item.cantidad,
@@ -101,6 +123,12 @@ export default function AddEditPedidos({
       .slice(0, 16);
     return local;
   };
+
+  useEffect(() => {
+    if (!requiereDireccion) {
+      setDireccionEntrega('');
+    }
+  }, [requiereDireccion]);
 
   const initDraftIdRef = useRef<number | null>(null);
   useEffect(() => {
@@ -133,11 +161,11 @@ export default function AddEditPedidos({
   const handleConfirm = async () => {
     if (!cliente) return setErrorMsg(`Seleccione un cliente`);
     if (!fechaEntrega) return setErrorMsg(`Seleccione la fecha de entrega`);
-    if (!tipoEntrega) return setErrorMsg(`Seleccione el método de entrega`);
+    if (!tipoEntrega) return setErrorMsg(`Seleccione el metodo de entrega`);
     if (items.length === 0) return setErrorMsg(`Agregue al menos un producto`);
 
     const perfilId = Number(cliente.id_perfil ?? cliente.id ?? 0);
-    if (!perfilId) return setErrorMsg('El cliente seleccionado no tiene un perfil válido');
+    if (!perfilId) return setErrorMsg('El cliente seleccionado no tiene un perfil valido');
 
     const tortas = items
       .filter((i) => i.tipo === 'torta')
@@ -163,11 +191,13 @@ export default function AddEditPedidos({
         precio_unitario: i.precio,
       }));
 
+    const direccionNormalizada = requiereDireccion ? direccionEntrega : '';
+
     const payload: PedidoPayload = {
       id_perfil: perfilId,
       fecha_entrega: fechaEntrega,
       tipo_entrega: tipoEntrega,
-      direccion_entrega: direccionEntrega || null,
+      direccion_entrega: direccionNormalizada || null,
       observaciones: observaciones || null,
       tortas,
       bandejas,
@@ -208,7 +238,7 @@ export default function AddEditPedidos({
         <div className="flex gap-2">
           <div className="flex-1">
             <label className="block text-sm font-medium">Cliente</label>
-            <Input placeholder="Ej: Juan Pérez" readOnly value={cliente?.nombre ?? ''} />
+            <Input placeholder="Ej: Juan Perez" readOnly value={cliente?.nombre ?? ''} />
           </div>
           <div className="flex mt-5">
             <Button
@@ -229,31 +259,33 @@ export default function AddEditPedidos({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium">Método de entrega</label>
+          <label className="block text-sm font-medium">Metodo de entrega</label>
           <select
             className="w-full rounded-md border px-3 py-2 text-sm"
             value={tipoEntrega}
             onChange={(e) => setTipoEntrega(e.target.value as TipoEntrega)}
           >
             <option value="">Seleccionar...</option>
-            <option value="retiro">Retiro</option>
-            <option value="envio_casa_cliente">Envío a casa del cliente</option>
-            <option value="envio_otra_direccion">Envío a otra dirección</option>
+            {currentDeliveryOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
         </div>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        {tipoEntrega !== 'retiro' && (
-          <div>
-            <label className="block text-sm font-medium">Dirección de entrega</label>
-            <Input
-              type="text"
-              value={direccionEntrega}
-              onChange={(e) => setDireccionEntrega(e.target.value)}
-              placeholder="Ej: Calle Falsa 123, Ciudad"
-            />
-          </div>
-        )}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {requiereDireccion && (
+            <div>
+              <label className="block text-sm font-medium">Direccion de entrega</label>
+              <Input
+                type="text"
+                value={direccionEntrega}
+                onChange={(e) => setDireccionEntrega(e.target.value)}
+                placeholder="Ej: Calle Falsa 123, Ciudad"
+              />
+            </div>
+          )}
         <div>
           <label className="block text-sm font-medium">Observaciones</label>
           <textarea
@@ -368,7 +400,7 @@ export default function AddEditPedidos({
         search={productoSearch}
         setSearch={setProductoSearch}
         tipo={tipoProducto}
-        setTipo={setTipoProducto}
+        setTipo={handleChangeTipoProducto}
         page={productoPage}
         next={nextProductos}
         prev={prevProductos}
@@ -387,3 +419,4 @@ export default function AddEditPedidos({
     </div>
   );
 }
+

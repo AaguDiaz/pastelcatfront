@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Calendar, LayoutDashboard, ShieldCheck, Users } from 'lucide-react';
 
-const PUBLIC_ROUTES = ['/login', '/forgot-password'];
+const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password'];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();

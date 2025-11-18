@@ -118,6 +118,8 @@ const useEventoData = () => {
   const normalizeEvento = useCallback((p: ApiEvento): Evento => {
     const cliente = buildClienteFromEvento(p);
     const total = p.total_final ?? p.total;
+    const direccionEntrega =
+      typeof p.direccion_entrega === 'string' ? p.direccion_entrega : null;
     return {
       id: Number(p.id_evento ?? p.id ?? 0),
       cliente,
@@ -125,6 +127,7 @@ const useEventoData = () => {
       total: Number(total ?? 0),
       observaciones: (p.observaciones ?? null) as string | null,
       estado: normalizeEstado(p.estado),
+      direccion_entrega: direccionEntrega,
     };
   }, [normalizeEstado, buildClienteFromEvento]);
 

@@ -7,6 +7,7 @@ import ModalError from '@/components/modals/error';
 import ModalExito from '@/components/modals/exito';
 import EliminarModal from '@/components/modals/eliminar';
 import { useArticuloData } from '@/hooks/useArticuloData';
+import { Articulo } from '@/interfaces/articulos';
 
 const ArticulosPage = () => {
   const {
@@ -42,6 +43,11 @@ const ArticulosPage = () => {
     requireCategorySelection,
   } = useArticuloData();
 
+  const handleReactivateArticulo = (articulo: Articulo) => {
+    startEdit(articulo);
+    window?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <main className="space-y-6 p-6">
       <FormGestionArticulos
@@ -70,6 +76,7 @@ const ArticulosPage = () => {
         onPageChange={handlePageChange}
         onEdit={startEdit}
         onDelete={requestDeleteArticulo}
+        onReactivate={handleReactivateArticulo}
       />
 
       {modalError.open && (

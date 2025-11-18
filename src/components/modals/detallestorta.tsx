@@ -116,7 +116,7 @@ export default function Detallestorta({ torta, onClose, fetchRecetaDetails }: Ve
             <div className="flex-1">
               <h2 className="text-3xl font-bold text-gray-800 mb-2">{torta.nombre}</h2>
               <p className="text-md text-gray-600 mb-4">
-                <strong>Tamaño:</strong> {torta.tamaño}
+                <strong>Tamaño:</strong> {torta.tamanio}
               </p>
               <p className="text-md text-gray-600 mb-4">
                 <strong>Rinde para:</strong> {' '}

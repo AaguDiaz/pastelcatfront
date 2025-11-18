@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Cliente, Producto, Pedido, PedidoPayload, ItemPedido} from '@/interfaces/pedidos';
+import { Cliente, Producto, Pedido, PedidoPayload, ItemPedido, ProductoTipo } from '@/interfaces/pedidos';
 import { ApiPedido as ApiPedidoFromBackend, ApiPedidoCompleto, ApiPedidoDetalle, ApiPerfil } from '@/interfaces/api';
 import { debugFetch } from '@/lib/debugFetch';
 import {api} from '@/lib/api';
@@ -36,10 +36,11 @@ const usePedidoData = () => {
   const [hasMoreProductos, setHasMoreProductos] = useState(false);
 
   const [tipoProductoState, setTipoProductoState] = useState<'torta' | 'bandeja'>('torta');
-    const setTipoProducto = useCallback((tipo: 'torta' | 'bandeja') => {
-      setProductoPage(1);
-      setTipoProductoState(tipo);
-    }, []);
+  const setTipoProducto = useCallback((tipo: ProductoTipo) => {
+    if (tipo === 'articulo') return;
+    setProductoPage(1);
+    setTipoProductoState(tipo);
+  }, []);
     
   const tipoProducto = tipoProductoState;
   const fetchWithAuth = useCallback(
@@ -458,4 +459,3 @@ const usePedidoData = () => {
 };
 
 export default usePedidoData;
-

@@ -61,7 +61,7 @@ export const useTortasData = (initialSearch = '') => {
         id_torta: item.id_torta,
         nombre: item.nombre,
         precio: Number(item.precio),
-        tamaño: item.tamanio,
+        tamanio: item.tamanio,
         imagen: item.imagen || '/cupcake.jpg',
       }));
 

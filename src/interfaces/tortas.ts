@@ -2,7 +2,7 @@ export interface Torta {
     id_torta: number;
     nombre: string;
     precio: string | number;
-    tamaño: string;
+    tamanio: string;
     imagen: string | null;
 }
 

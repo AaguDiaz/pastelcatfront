@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Pencil } from 'lucide-react';
+import { CATEGORY_INACTIVE_ID } from '@/hooks/useArticuloData';
 
 interface FormTablaArticulosProps {
   articulos: Articulo[];
@@ -27,6 +28,7 @@ interface FormTablaArticulosProps {
   onPageChange: (page: number) => void;
   onEdit: (articulo: Articulo) => void;
   onDelete: (articulo: Articulo) => void;
+  onReactivate?: (articulo: Articulo) => void;
 }
 
 const formatCurrency = (value: number | string | null | undefined) => {
@@ -56,6 +58,7 @@ const FormTablaArticulos = ({
   onPageChange,
   onEdit,
   onDelete,
+  onReactivate,
 }: FormTablaArticulosProps) => {
   const categoriaMap = useMemo(() => {
     const map = new Map<number, string>();
@@ -147,14 +150,24 @@ const FormTablaArticulos = ({
                     >
                       <Pencil size={16} /> Editar
                     </Button>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      className="bg-pastel-red text-black hover:bg-red-400"
-                      onClick={() => onDelete(articulo)}
-                    >
-                      Dar de baja
-                    </Button>
+                    {articulo.id_categoria === CATEGORY_INACTIVE_ID ? (
+                      <Button
+                        type="button"
+                        className="bg-pastel-green text-black hover:bg-green-400"
+                        onClick={() => onReactivate?.(articulo)}
+                      >
+                        Dar de alta
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        className="bg-pastel-red text-black hover:bg-red-400"
+                        onClick={() => onDelete(articulo)}
+                      >
+                        Dar de baja
+                      </Button>
+                    )}
                   </div>
                 </td>
               </tr>

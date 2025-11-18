@@ -3,6 +3,7 @@ import type { ApiPedido, ApiPedidoDetalle } from './api';
 
 export interface Evento extends Pedido {
   id_evento?: number;
+  direccion_entrega?: string | null;
 }
 
 export interface EventoPayload extends PedidoPayload {
