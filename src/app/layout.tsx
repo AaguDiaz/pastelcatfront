@@ -156,7 +156,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       exit={{ opacity: 0, height: 0 }}
                       className="pl-4 mb-4 space-y-1"
                     >
-                      <li className="hover:underline cursor-pointer">🎉 Eventos</li>
+                      <li className="hover:underline cursor-pointer"><Link
+                          href="/evento"
+                          className="hover:underline cursor-pointer"
+                          onClick={closeSidebar}
+                        >
+                          🎉 Eventos
+                        </Link></li>
                       <li className="hover:underline cursor-pointer"><Link
                           href="/articulos"
                           className="hover:underline cursor-pointer"

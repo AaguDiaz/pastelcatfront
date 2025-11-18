@@ -1,30 +1,38 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Cliente, Producto, Pedido, PedidoPayload, ItemPedido} from '@/interfaces/pedidos';
-import { ApiPedido as ApiPedidoFromBackend, ApiPedidoCompleto, ApiPedidoDetalle, ApiPerfil } from '@/interfaces/api';
+import { Cliente, Producto, ProductoTipo } from '@/interfaces/pedidos';
+import {
+  Evento,
+  EventoPayload,
+  EventoItem,
+  ApiEvento,
+  ApiEventoCompleto,
+  ApiEventoDetalle,
+} from '@/interfaces/eventos';
+import { ApiPerfil } from '@/interfaces/api';
 import { debugFetch } from '@/lib/debugFetch';
 import {api} from '@/lib/api';
 
 const API_BASE_URL = api;
 
-const usePedidoData = () => {
+const useEventoData = () => {
   // Pedidos list (tabla pedidos)
-  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [pedidos, setPedidos] = useState<Evento[]>([]);
   const [pedidosTotalPages, setPedidosTotalPages] = useState(1);
   const [pedidosCurrentPage, setPedidosCurrentPage] = useState(1);
   // Modo edición de un pedido
   type TipoEntrega = '' | 'retiro' | 'envio_casa_cliente' | 'envio_otra_direccion';
-  interface PedidoEditDraft {
+  interface EventoEditDraft {
     id: number;
     cliente: Cliente;
     fecha_entrega: string;
     tipo_entrega: TipoEntrega;
     direccion_entrega: string | null;
     observaciones: string | null;
-    items: ItemPedido[];
+    items: EventoItem[];
     total_descuento?: number;
   }
   const [isEditing, setIsEditing] = useState(false);
-  const [editDraft, setEditDraft] = useState<PedidoEditDraft | null>(null);
+  const [editDraft, setEditDraft] = useState<EventoEditDraft | null>(null);
   const [clienteSearch, setClienteSearch] = useState('');
   const [productoSearch, setProductoSearch] = useState('');
 
@@ -35,8 +43,8 @@ const usePedidoData = () => {
   const [hasMoreClientes, setHasMoreClientes] = useState(false);
   const [hasMoreProductos, setHasMoreProductos] = useState(false);
 
-  const [tipoProductoState, setTipoProductoState] = useState<'torta' | 'bandeja'>('torta');
-    const setTipoProducto = useCallback((tipo: 'torta' | 'bandeja') => {
+  const [tipoProductoState, setTipoProductoState] = useState<ProductoTipo>('torta');
+    const setTipoProducto = useCallback((tipo: ProductoTipo) => {
       setProductoPage(1);
       setTipoProductoState(tipo);
     }, []);
@@ -73,7 +81,7 @@ const usePedidoData = () => {
   );
 
   // --- Helpers para normalizar Pedidos recibidos del backend ---
-  const normalizeEstado = useCallback((rawEstado: ApiPedidoFromBackend['estado']): string => {
+  const normalizeEstado = useCallback((rawEstado: ApiEvento['estado']): string => {
     if (typeof rawEstado === 'string') return rawEstado;
     if (rawEstado && typeof rawEstado === 'object') {
       const anyEstado = (rawEstado as Record<string, unknown>)['estado'];
@@ -82,8 +90,8 @@ const usePedidoData = () => {
     return 'pendiente';
   }, []);
 
-  const buildClienteFromPedido = useCallback((p: ApiPedidoFromBackend | ApiPedidoCompleto): Cliente => {
-    const perfil = (p as ApiPedidoCompleto)?.perfil as ApiPerfil | null | undefined;
+  const buildClienteFromEvento = useCallback((p: ApiEvento | ApiEventoCompleto): Cliente => {
+    const perfil = (p as ApiEventoCompleto)?.perfil as ApiPerfil | null | undefined;
     const nestedCliente = typeof p.cliente === 'object' && p.cliente !== null ? p.cliente : undefined;
     const legacyId = (p as { id_cliente?: number }).id_cliente;
     const rawId = p.id_perfil ?? perfil?.id_perfil ?? legacyId ?? nestedCliente?.id ?? 0;
@@ -107,49 +115,49 @@ const usePedidoData = () => {
     };
   }, []);
 
-  const normalizePedido = useCallback((p: ApiPedidoFromBackend): Pedido => {
-    const cliente = buildClienteFromPedido(p);
+  const normalizeEvento = useCallback((p: ApiEvento): Evento => {
+    const cliente = buildClienteFromEvento(p);
     const total = p.total_final ?? p.total;
     return {
-      id: Number(p.id_pedido ?? p.id ?? 0),
+      id: Number(p.id_evento ?? p.id ?? 0),
       cliente,
       fecha_entrega: p.fecha_entrega || '',
       total: Number(total ?? 0),
       observaciones: (p.observaciones ?? null) as string | null,
       estado: normalizeEstado(p.estado),
     };
-  }, [normalizeEstado, buildClienteFromPedido]);
+  }, [normalizeEstado, buildClienteFromEvento]);
 
   const loadPedidos = useCallback(
     async (opts?: { page?: number; estado?: string | null }) => {
       try {
         const page = opts?.page ?? 1;
         const estado = opts?.estado ?? null;
-        const url = `${API_BASE_URL}/pedidos?page=${encodeURIComponent(page)}${estado ? `&estado=${encodeURIComponent(estado)}` : ''}`;
-        const root = await fetchWithAuth<{ data?: ApiPedidoFromBackend[]; totalPages?: number; currentPage?: number }>(url);
+        const url = `${API_BASE_URL}/eventos?page=${encodeURIComponent(page)}${estado ? `&estado=${encodeURIComponent(estado)}` : ''}`;
+        const root = await fetchWithAuth<{ data?: ApiEvento[]; totalPages?: number; currentPage?: number }>(url);
         // Backend esperado: { data: [...], totalPages, currentPage }
-        const arr: ApiPedidoFromBackend[] = Array.isArray(root?.data) ? root.data as ApiPedidoFromBackend[] : [];
-        const normalized = arr.map(normalizePedido);
+        const arr: ApiEvento[] = Array.isArray(root?.data) ? (root.data as ApiEvento[]) : [];
+        const normalized = arr.map(normalizeEvento);
         setPedidos(normalized);
         setPedidosTotalPages(Number(root?.totalPages ?? 1));
         setPedidosCurrentPage(Number(root?.currentPage ?? page));
       } catch (e) {
-        console.error('Error al cargar pedidos', e);
+        console.error('Error al cargar eventos', e);
         setPedidos([]);
         setPedidosTotalPages(1);
         setPedidosCurrentPage(1);
       }
     },
-    [fetchWithAuth, normalizePedido]
+    [fetchWithAuth, normalizeEvento]
   );
 
   // Cargar detalle de un pedido y preparar el borrador de edición
   const startEditPedido = useCallback(async (id: number) => {
     try {
-      // Usamos el endpoint completo para obtener pedido_detalles
-      const p = await fetchWithAuth<ApiPedidoCompleto>(`${API_BASE_URL}/pedidos/${id}/completo`);
+      // Usamos el endpoint completo para obtener la lista de productos del evento
+      const p = await fetchWithAuth<ApiEventoCompleto>(`${API_BASE_URL}/eventos/${id}/completo`);
 
-      const cliente = buildClienteFromPedido(p);
+      const cliente = buildClienteFromEvento(p);
 
       const tipoEntregaRaw = String(p.tipo_entrega ?? '').toLowerCase().trim();
       const mapEntrega = (raw: string): TipoEntrega => {
@@ -162,16 +170,49 @@ const usePedidoData = () => {
       const tipo_entrega: TipoEntrega = mapEntrega(tipoEntregaRaw);
 
       // Normalizar detalles (incluyendo datos anidados de torta/bandeja)
-      const detalles: ApiPedidoDetalle[] = Array.isArray(p.pedido_detalles) ? p.pedido_detalles : [];
-      const items: ItemPedido[] = detalles.map((d) => {
+      const detalles: ApiEventoDetalle[] = Array.isArray(p.lista_evento) ? p.lista_evento : [];
+      const items: EventoItem[] = detalles.map((d) => {
         const idT = Number(d.id_torta ?? d.torta?.id ?? 0);
         const idB = Number(d.id_bandeja ?? d.bandeja?.id ?? 0);
-        const isTorta = !!idT && !idB;
-        const tipo: 'torta' | 'bandeja' = isTorta ? 'torta' : 'bandeja';
-        const productoId = isTorta ? idT : idB;
-        const nombre = d.nombre ?? (isTorta ? d.torta?.nombre : d.bandeja?.nombre) ?? (isTorta ? `Torta ${productoId}` : `Bandeja ${productoId}`);
-        const precio = Number(d.precio_unitario ?? (isTorta ? d.torta?.precio : d.bandeja?.precio) ?? d.precio ?? 0);
+        const idA = Number(d.id_articulo ?? d.articulo?.id ?? d.articulo?.id_articulo ?? 0);
+        const isTorta = !!idT && !idB && !idA;
+        const isBandeja = !isTorta && !!idB;
+        const tipo: ProductoTipo = isTorta ? 'torta' : isBandeja ? 'bandeja' : 'articulo';
+        const productoId = isTorta ? idT : isBandeja ? idB : idA;
+        const nombre =
+          d.nombre ??
+          (tipo === 'torta'
+            ? d.torta?.nombre
+            : tipo === 'bandeja'
+              ? d.bandeja?.nombre
+              : d.articulo?.nombre) ??
+          (tipo === 'torta'
+            ? `Torta ${productoId}`
+            : tipo === 'bandeja'
+              ? `Bandeja ${productoId}`
+              : `Artículo ${productoId}`);
+        const precio = Number(
+          d.precio_unitario ??
+            (tipo === 'torta'
+              ? d.torta?.precio
+              : tipo === 'bandeja'
+                ? d.bandeja?.precio
+                : d.articulo?.precio_alquiler ?? d.articulo?.costo_unitario) ??
+            d.precio ??
+            0,
+        );
         const cantidad = Number(d.cantidad ?? 1);
+        const rawStockDisponible = tipo === 'articulo'
+          ? Number(d.articulo?.stock_disponible ?? d.articulo?.stock_disponible ?? NaN)
+          : NaN;
+        const rawStockTotal = tipo === 'articulo'
+          ? Number(d.articulo?.stock_total ?? NaN)
+          : NaN;
+        const categoriaNombre =
+          tipo === 'articulo'
+            ? d.articulo?.categoria_nombre ??
+              (typeof d.articulo?.id_categoria === 'number' ? `#${d.articulo?.id_categoria}` : undefined)
+            : undefined;
         return {
           key: `${tipo}-${productoId}`,
           productoId,
@@ -180,11 +221,14 @@ const usePedidoData = () => {
           nombre,
           precio,
           cantidad,
+          stockDisponible: Number.isFinite(rawStockDisponible) ? rawStockDisponible : undefined,
+          stockTotal: Number.isFinite(rawStockTotal) ? rawStockTotal : undefined,
+          categoriaNombre,
         };
       });
 
-      const draft: PedidoEditDraft = {
-        id: Number(p.id ?? id),
+      const draft: EventoEditDraft = {
+        id: Number(p.id_evento ?? p.id ?? id),
         cliente,
         fecha_entrega: p.fecha_entrega ?? '',
         tipo_entrega,
@@ -197,29 +241,62 @@ const usePedidoData = () => {
       setEditDraft(draft);
       setIsEditing(true);
     } catch (e) {
-      console.error('Error al cargar detalle de pedido', e);
+      console.error('Error al cargar detalle de evento', e);
       setEditDraft(null);
       setIsEditing(false);
     }
-  }, [fetchWithAuth, buildClienteFromPedido]);
+  }, [fetchWithAuth, buildClienteFromEvento]);
 
-  // Obtener pedido completo (para ver detalles) sin activar modo edición
+  // Obtener evento completo (para ver detalles) sin activar modo edición
   const getPedidoCompleto = useCallback(async (id: number) => {
     try {
-      const p = await fetchWithAuth<ApiPedidoCompleto>(`${API_BASE_URL}/pedidos/${id}/completo`);
+      const p = await fetchWithAuth<ApiEventoCompleto>(`${API_BASE_URL}/eventos/${id}/completo`);
 
-      const cliente = buildClienteFromPedido(p);
+      const cliente = buildClienteFromEvento(p);
       // Normalizar items igual que en startEditPedido
-      const detalles: ApiPedidoDetalle[] = Array.isArray(p.pedido_detalles) ? p.pedido_detalles : [];
+      const detalles: ApiEventoDetalle[] = Array.isArray(p.lista_evento) ? p.lista_evento : [];
       const items = detalles.map((d) => {
         const idT = Number(d.id_torta ?? d.torta?.id ?? 0);
         const idB = Number(d.id_bandeja ?? d.bandeja?.id ?? 0);
-        const isTorta = !!idT && !idB;
-        const tipo: 'torta' | 'bandeja' = isTorta ? 'torta' : 'bandeja';
-        const productoId = isTorta ? idT : idB;
-        const nombre = d.nombre ?? (isTorta ? d.torta?.nombre : d.bandeja?.nombre) ?? (isTorta ? `Torta ${productoId}` : `Bandeja ${productoId}`);
-        const precio = Number(d.precio_unitario ?? (isTorta ? d.torta?.precio : d.bandeja?.precio) ?? d.precio ?? 0);
+        const idA = Number(d.id_articulo ?? d.articulo?.id ?? d.articulo?.id_articulo ?? 0);
+        const isTorta = !!idT && !idB && !idA;
+        const isBandeja = !isTorta && !!idB;
+        const tipo: ProductoTipo = isTorta ? 'torta' : isBandeja ? 'bandeja' : 'articulo';
+        const productoId = isTorta ? idT : isBandeja ? idB : idA;
+        const nombre =
+          d.nombre ??
+          (tipo === 'torta'
+            ? d.torta?.nombre
+            : tipo === 'bandeja'
+              ? d.bandeja?.nombre
+              : d.articulo?.nombre) ??
+          (tipo === 'torta'
+            ? `Torta ${productoId}`
+            : tipo === 'bandeja'
+              ? `Bandeja ${productoId}`
+              : `Artículo ${productoId}`);
+        const precio = Number(
+          d.precio_unitario ??
+            (tipo === 'torta'
+              ? d.torta?.precio
+              : tipo === 'bandeja'
+                ? d.bandeja?.precio
+                : d.articulo?.precio_alquiler ?? d.articulo?.costo_unitario) ??
+            d.precio ??
+            0,
+        );
         const cantidad = Number(d.cantidad ?? 1);
+        const rawStockDisponible = tipo === 'articulo'
+          ? Number(d.articulo?.stock_disponible ?? d.articulo?.stock_disponible ?? NaN)
+          : NaN;
+        const rawStockTotal = tipo === 'articulo'
+          ? Number(d.articulo?.stock_total ?? NaN)
+          : NaN;
+        const categoriaNombre =
+          tipo === 'articulo'
+            ? d.articulo?.categoria_nombre ??
+              (typeof d.articulo?.id_categoria === 'number' ? `#${d.articulo?.id_categoria}` : undefined)
+            : undefined;
         return {
           key: `${tipo}-${productoId}`,
           productoId,
@@ -228,13 +305,26 @@ const usePedidoData = () => {
           nombre,
           precio,
           cantidad,
-          imagen: (isTorta ? d.torta?.imagen : d.bandeja?.imagen) ?? undefined,
-          tamanio: (isTorta ? d.torta?.tamanio : d.bandeja?.tamanio) ?? undefined,
+          imagen:
+            (tipo === 'torta'
+              ? d.torta?.imagen
+              : tipo === 'bandeja'
+                ? d.bandeja?.imagen
+                : undefined) ?? undefined,
+          tamanio:
+            (tipo === 'torta'
+              ? d.torta?.tamanio
+              : tipo === 'bandeja'
+                ? d.bandeja?.tamanio
+                : undefined) ?? undefined,
+          stockDisponible: Number.isFinite(rawStockDisponible) ? rawStockDisponible : undefined,
+          stockTotal: Number.isFinite(rawStockTotal) ? rawStockTotal : undefined,
+          categoriaNombre,
         };
       });
 
       return {
-        id: Number(p.id ?? id),
+        id: Number(p.id_evento ?? p.id ?? id),
         cliente,
         fecha_entrega: p.fecha_entrega ?? '',
         tipo_entrega: String(p.tipo_entrega ?? ''),
@@ -248,29 +338,19 @@ const usePedidoData = () => {
         items,
       };
     } catch (e) {
-      console.error('Error al obtener pedido completo', e);
+      console.error('Error al obtener evento completo', e);
       throw e;
     }
-  }, [fetchWithAuth, normalizeEstado, buildClienteFromPedido]);
+  }, [fetchWithAuth, normalizeEstado, buildClienteFromEvento]);
 
   const clearEdit = useCallback(() => {
     setEditDraft(null);
     setIsEditing(false);
   }, []);
 
-  interface PedidoUpdateBody {
-    id_perfil?: number;
-    fecha_entrega: string;
-    tipo_entrega: string;
-    direccion_entrega: string | null;
-    observaciones: string | null;
-    tortas: { id_torta: number; cantidad: number; precio_unitario?: number }[];
-    bandejas: { id_bandeja: number; cantidad: number; precio_unitario?: number }[];
-    articulos?: { id_articulo: number; cantidad: number; precio_unitario?: number }[];
-    descuento?: number;
-  }
-  const updatePedido = useCallback(async (id: number, body: PedidoUpdateBody) => {
-    await fetchWithAuth(`${API_BASE_URL}/pedidos/${id}`, {
+  type EventoUpdateBody = Omit<EventoPayload, 'id_perfil'> & { id_perfil?: number };
+  const updatePedido = useCallback(async (id: number, body: EventoUpdateBody) => {
+    await fetchWithAuth(`${API_BASE_URL}/eventos/${id}`, {
       method: 'PUT',
       body: JSON.stringify(body),
     });
@@ -278,7 +358,7 @@ const usePedidoData = () => {
   }, [fetchWithAuth, loadPedidos]);
   // Cambiar estado y eliminar (genérico; ajustar si el backend usa rutas específicas)
   const updatePedidoEstado = useCallback(async (id: number, idEstado: number) => {
-    await fetchWithAuth(`${API_BASE_URL}/pedidos/${id}/estado`, {
+    await fetchWithAuth(`${API_BASE_URL}/eventos/${id}/estado`, {
       method: 'PUT',
       body: JSON.stringify({ id_estado: idEstado }),
     });
@@ -286,35 +366,74 @@ const usePedidoData = () => {
   }, [fetchWithAuth, loadPedidos]);
 
   const deletePedido = useCallback(async (id: number) => {
-    await fetchWithAuth(`${API_BASE_URL}/pedidos/${id}`, {
+    await fetchWithAuth(`${API_BASE_URL}/eventos/${id}`, {
       method: 'DELETE',
     });
     await loadPedidos();
   }, [fetchWithAuth, loadPedidos]);
 
-  type Tipo = 'torta' | 'bandeja';
-
- interface RawProducto {
+  interface RawProducto {
     id?: number;
     id_torta?: number;
     id_bandeja?: number;
     id_producto?: number;
+    id_articulo?: number;
+    id_categoria?: number;
     nombre: string;
     precio: number;
     imagen?: string;
     tamanio?: string;
+    precio_alquiler?: number;
+    costo_unitario?: number | string;
+    color?: string | null;
+    stock_total?: number;
+    stock_disponible?: number;
+    reutilizable?: boolean;
+    categoria_nombre?: string;
   }
 
-  const normalizeProducto = useCallback((x: RawProducto, tipo: Tipo): Producto => {
-    const rawId = x.id ?? x.id_torta ?? x.id_bandeja ?? x.id_producto;
+  const normalizeProducto = useCallback((x: RawProducto, tipo: ProductoTipo): Producto => {
+    const rawId = x.id ?? x.id_torta ?? x.id_bandeja ?? x.id_producto ?? x.id_articulo;
+    const isArticulo = tipo === 'articulo';
+    const costoUnitarioValue =
+      typeof x.costo_unitario === 'string'
+        ? Number.parseFloat(x.costo_unitario)
+        : typeof x.costo_unitario === 'number'
+          ? x.costo_unitario
+          : undefined;
+    const basePrecio = isArticulo
+      ? Number(
+          x.precio_alquiler ??
+            (Number.isFinite(costoUnitarioValue ?? NaN) ? costoUnitarioValue : x.precio ?? 0),
+        )
+      : Number(x.precio);
     return {
       id: Number(rawId),
       nombre: x.nombre,
-      precio: Number(x.precio),
-      imagen: x.imagen,
+      precio: basePrecio,
+      imagen: isArticulo ? undefined : x.imagen,
       tamanio: x.tamanio,
       tipo,
-      categoriaId: undefined,
+      categoriaId: x.id_categoria,
+      color: isArticulo ? (x.color ?? null) : undefined,
+      stockTotal: isArticulo
+        ? typeof x.stock_total === 'number'
+          ? x.stock_total
+          : undefined
+        : undefined,
+      stockDisponible: isArticulo
+        ? typeof x.stock_disponible === 'number'
+          ? x.stock_disponible
+          : undefined
+        : undefined,
+      reutilizable: isArticulo ? Boolean(x.reutilizable) : undefined,
+      costoUnitario: isArticulo
+        ? Number.isFinite(costoUnitarioValue ?? NaN)
+          ? (costoUnitarioValue as number)
+          : undefined
+        : undefined,
+      precioAlquiler: isArticulo ? Number(x.precio_alquiler ?? basePrecio) : undefined,
+      categoriaNombre: isArticulo ? x.categoria_nombre : undefined,
     };
   }, []);
 
@@ -366,21 +485,32 @@ const usePedidoData = () => {
 
   const loadProductos = useCallback(async () => {
     try {
+      if (tipoProducto === 'articulo') {
         const result = await fetchWithAuth<{ data?: RawProducto[] }>(
-        `${API_BASE_URL}/productos?tipo=${tipoProducto}&page=${productoPage}&pageSize=6&search=${encodeURIComponent(productoSearch)}`
+          `${API_BASE_URL}/articulos?page=${productoPage}&pageSize=6&search=${encodeURIComponent(productoSearch)}`,
         );
-
-       const raw = (result?.data ?? []) as RawProducto[];
-        const normalized: Producto[] = raw.map((x) => normalizeProducto(x, tipoProducto));
-
+        const raw = (result?.data ?? []) as RawProducto[];
+        const normalized = raw
+          .map((x) => normalizeProducto(x, 'articulo'))
+          .filter((p) => p.categoriaId !== 1);
         setProductos(normalized);
         setHasMoreProductos(raw.length === 6);
+        return;
+      }
+
+      const result = await fetchWithAuth<{ data?: RawProducto[] }>(
+        `${API_BASE_URL}/productos?tipo=${tipoProducto}&page=${productoPage}&pageSize=6&search=${encodeURIComponent(productoSearch)}`,
+      );
+      const raw = (result?.data ?? []) as RawProducto[];
+      const normalized: Producto[] = raw.map((x) => normalizeProducto(x, tipoProducto));
+      setProductos(normalized);
+      setHasMoreProductos(raw.length === 6);
     } catch (e) {
-        console.error('Error al cargar productos', e);
-        setProductos([]);
-        setHasMoreProductos(false);
+      console.error('Error al cargar productos', e);
+      setProductos([]);
+      setHasMoreProductos(false);
     }
-   }, [fetchWithAuth, tipoProducto, productoPage, productoSearch, normalizeProducto]);
+  }, [fetchWithAuth, tipoProducto, productoPage, productoSearch, normalizeProducto]);
 
   useEffect(() => {
     setClientePage(1);
@@ -409,15 +539,15 @@ const usePedidoData = () => {
   const prevProductos = () => setProductoPage((p) => Math.max(1, p - 1));
 
   const confirmarPedido = useCallback(
-    async (pedido: PedidoPayload) => {
+    async (pedido: EventoPayload) => {
       try {
          
-        return await fetchWithAuth(`${API_BASE_URL}/pedidos`, {
+        return await fetchWithAuth(`${API_BASE_URL}/eventos`, {
           method: 'POST',
           body: JSON.stringify(pedido),
         });
       } catch (e) {
-        console.error('Error al confirmar pedido', e);
+        console.error('Error al confirmar evento', e);
         throw e;
       }
     },
@@ -457,5 +587,4 @@ const usePedidoData = () => {
   };
 };
 
-export default usePedidoData;
-
+export default useEventoData;
