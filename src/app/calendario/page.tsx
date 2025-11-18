@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback, useEffect } from "react"
 import { EventCalendar, addHoursToDate } from "@/components/calendario"
 import type { CalendarEvent, EventColor } from "@/components/calendario/types"
 import usePedidoData from "@/hooks/usePedidoData"
+import useEventoData from "@/hooks/useEventoData"
 
 // Map estado -> calendar color
 function estadoToColor(estadoRaw: string): EventColor {
@@ -39,6 +40,7 @@ function parseFechaEntrega(fecha: string): Date {
 
 export default function CalendarioPage() {
   const { pedidos, getPedidoCompleto } = usePedidoData()
+  const { pedidos: eventos } = useEventoData()
 
   // Local extra events created from the calendar UI (not persisted)
   const [extraEvents, setExtraEvents] = useState<CalendarEvent[]>([])
@@ -88,9 +90,27 @@ export default function CalendarioPage() {
     })
   }, [pedidos, pedidoLocations])
 
+  const eventoEvents = useMemo<CalendarEvent[]>(() => {
+    return (eventos || []).map((p) => {
+      const start = parseFechaEntrega(p.fecha_entrega)
+      const end = addHoursToDate(start, 2)
+      const color = estadoToColor(p.estado)
+      return {
+        id: `evento-${p.id}`,
+        title: `Evento #${p.id} - ${p.cliente?.nombre ?? ""}`.trim(),
+        description: p.observaciones ?? undefined,
+        start,
+        end,
+        allDay: false,
+        color,
+        location: p.direccion_entrega ?? undefined,
+      } satisfies CalendarEvent
+    })
+  }, [eventos])
+
   const events = useMemo(
-    () => [...pedidoEvents, ...extraEvents],
-    [pedidoEvents, extraEvents]
+    () => [...pedidoEvents, ...eventoEvents, ...extraEvents],
+    [pedidoEvents, eventoEvents, extraEvents]
   )
 
   // Handle create/update/delete only for local extra events
@@ -114,8 +134,8 @@ export default function CalendarioPage() {
   }, [])
 
   return (
-    <div className="p-4">
-      <EventCalendar
+    <div className="p-4 ">
+      <EventCalendar 
         events={events}
         onEventAdd={handleAdd}
         onEventUpdate={handleUpdate}

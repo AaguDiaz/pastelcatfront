@@ -1,4 +1,4 @@
-export type ProductoTipo = 'torta' | 'bandeja';
+export type ProductoTipo = 'torta' | 'bandeja' | 'articulo';
 
 export interface Cliente {
   /** Alias local de `id_perfil`, se mantiene `id` para no romper componentes existentes. */
@@ -18,7 +18,15 @@ export interface Producto {
   precio: number;
   imagen?: string;
   tamanio?: string;
-  tipo: ProductoTipo;          
+  tipo: ProductoTipo;
+  categoriaId?: number;
+  color?: string | null;
+  stockTotal?: number;
+  stockDisponible?: number;
+  reutilizable?: boolean;
+  costoUnitario?: number;
+  precioAlquiler?: number;
+  categoriaNombre?: string;
 }
 
 export interface ItemPedido {
@@ -29,6 +37,9 @@ export interface ItemPedido {
   nombre: string;
   precio: number;
   cantidad: number;
+  stockDisponible?: number;
+  stockTotal?: number;
+  categoriaNombre?: string | null;
 }
 
 export interface PedidoPayload {
@@ -45,6 +56,12 @@ export interface PedidoPayload {
     id_bandeja: number;
     cantidad: number;
   }[];
+  articulos?: {
+    id_articulo: number;
+    cantidad: number;
+    precio_unitario?: number;
+  }[];
+  descuento?: number;
 }
 
 export interface Pedido {

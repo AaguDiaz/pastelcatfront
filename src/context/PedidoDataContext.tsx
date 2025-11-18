@@ -5,7 +5,7 @@ import usePedidoData from '@/hooks/usePedidoData';
 
 type PedidoDataValue = ReturnType<typeof usePedidoData>;
 
-const PedidoDataContext = createContext<PedidoDataValue | null>(null);
+export const PedidoDataContext = createContext<PedidoDataValue | null>(null);
 
 export function PedidoDataProvider({ children }: { children: React.ReactNode }) {
   const value = usePedidoData();
@@ -19,4 +19,3 @@ export function usePedidoDataCtx() {
   if (!ctx) throw new Error('usePedidoDataCtx debe usarse dentro de <PedidoDataProvider>');
   return ctx;
 }
-
