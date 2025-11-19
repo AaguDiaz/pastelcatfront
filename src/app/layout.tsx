@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Calendar, LayoutDashboard, ShieldCheck, Users } from 'lucide-react';
+import { api } from '@/lib/api';
 
 const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password'];
 
@@ -39,10 +40,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, [checkAuth]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      await fetch(`${api}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+    } catch {
+      // ignore logout errors
+    }
+    localStorage.removeItem('token');
     setIsAuthenticated(false);
-    router.push("/login");
+    router.push('/login');
   };
 
   const toggleSidebar = () => {
@@ -187,10 +199,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <span>📊 Dashboard</span>
                     <LayoutDashboard size={16} />
                   </Link>
-                  <div className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
+                  <Link href="/auditoria" className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
                     <span>🕵️ Auditoría</span>
                     <ShieldCheck size={16} />
-                  </div>
+                  </Link>
                   <div className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
                     <Link 
                       href="/usuarios"
