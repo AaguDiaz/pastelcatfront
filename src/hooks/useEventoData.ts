@@ -238,7 +238,7 @@ const useEventoData = () => {
         direccion_entrega: (p.direccion_entrega ?? null) as string | null,
         observaciones: (p.observaciones ?? null) as string | null,
         items,
-        total_descuento: Number(p.total_descuento ?? 0),
+        total_descuento: Number(p.total_descuento ?? p.descuento ?? 0),
       };
 
       setEditDraft(draft);
@@ -337,7 +337,7 @@ const useEventoData = () => {
         estado: normalizeEstado(p.estado),
         total_items: Number(p.total_items ?? items.reduce((s: number, it) => s + it.cantidad, 0)),
         total_final: Number(p.total_final ?? items.reduce((s: number, it) => s + it.cantidad * it.precio, 0)),
-        total_descuento: Number(p.total_descuento ?? 0),
+        total_descuento: Number(p.total_descuento ?? p.descuento ?? 0),
         items,
       };
     } catch (e) {

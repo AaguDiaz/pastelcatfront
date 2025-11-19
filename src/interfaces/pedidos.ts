@@ -48,6 +48,8 @@ export interface PedidoPayload {
   tipo_entrega: string;
   direccion_entrega: string | null;
   observaciones: string | null;
+  total: number;
+  total_final: number;
   tortas: {
     id_torta: number;
     cantidad: number;
@@ -61,6 +63,7 @@ export interface PedidoPayload {
     cantidad: number;
     precio_unitario?: number;
   }[];
+  total_descuento?: number;
   descuento?: number;
 }
 
