@@ -44,6 +44,7 @@ export interface ApiPedido {
   fecha_entrega?: string;
   total?: number;
   total_final?: number;
+  descuento?: number;
   observaciones?: string | null;
   estado?: string | { estado: string };
   [key: string]: unknown;

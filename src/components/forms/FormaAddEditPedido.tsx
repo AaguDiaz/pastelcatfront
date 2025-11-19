@@ -199,9 +199,12 @@ export default function AddEditPedidos({
       tipo_entrega: tipoEntrega,
       direccion_entrega: direccionNormalizada || null,
       observaciones: observaciones || null,
+      total: subtotal,
+      total_final: total,
       tortas,
       bandejas,
       articulos,
+      total_descuento: descuentoNumber,
       descuento: descuentoNumber,
     };
 
