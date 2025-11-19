@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AuthEvent,
+  AuthEventKind,
   AuthUsageSummary,
   MateriaHistorialItem,
   MateriaResumenItem,
@@ -291,9 +292,9 @@ export const useAuditoriaData = () => {
         `${API_BASE_URL}/auditoria/auth/events?${qs}`,
       );
       const raw = Array.isArray(res?.data)
-        ? (res.data as Record<string, unknown>[])
+        ? (res.data as unknown[])
         : Array.isArray(res as unknown as unknown[])
-          ? (res as unknown as Record<string, unknown>[])
+          ? (res as unknown as unknown[])
           : [];
       const normalized = raw.map((item) =>
         normalizeAuthEvent(item as unknown as Record<string, unknown>),
@@ -337,11 +338,11 @@ export const useAuditoriaData = () => {
         `${API_BASE_URL}/auditoria/materias/historial?${qs}`,
       );
       const raw = Array.isArray(res?.data)
-        ? (res.data as Record<string, unknown>[])
+        ? (res.data as unknown[])
         : Array.isArray(res as unknown as unknown[])
-          ? (res as unknown as Record<string, unknown>[])
+          ? (res as unknown as unknown[])
           : [];
-      const normalized = raw.map((item) => normalizeMateriaHistorial(item));
+      const normalized = raw.map((item) => normalizeMateriaHistorial(item as Record<string, unknown>));
       setMateriaHistorial(normalized);
       const totalPages = (res as PagedResult<MateriaHistorialItem>)?.totalPages;
       setMateriaHistorialTotalPages(Math.max(1, totalPages ?? 1));
@@ -369,7 +370,12 @@ export const useAuditoriaData = () => {
         : Array.isArray((res as { data?: MateriaResumenItem[] }).data)
           ? (res as { data?: MateriaResumenItem[] }).data
           : [];
-      setMateriaResumen(data.map((item) => normalizeMateriaResumen(item as Record<string, unknown>)));
+      const safeData = data ?? [];
+      setMateriaResumen(
+        safeData.map((item) =>
+          normalizeMateriaResumen(item as unknown as Record<string, unknown>),
+        ),
+      );
     } catch (err) {
       setErrorMessage(getErrorMessage(err));
       setMateriaResumen([]);
