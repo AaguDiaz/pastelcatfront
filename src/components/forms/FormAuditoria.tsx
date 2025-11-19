@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ShieldCheck, RefreshCw, Clock4, Users, Activity } from 'lucide-react';
+import type { jsPDF as JsPDFType } from 'jspdf';
 import { AuthEvent, AuthUsageSummary } from '@/interfaces/auditoria';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,14 +72,15 @@ const FormAuditoria = ({
   page,
   totalPages,
   filters,
-  onSearchChange,
   onTypeChange,
   onDateChange,
   onPageChange,
   onReload,
 }: FormAuditoriaProps) => {
-  const timeline = summary?.timeline ?? [];
-  const orderedTimeline = useMemo(() => [...timeline].reverse(), [timeline]); // mas reciente primero
+  const orderedTimeline = useMemo(() => {
+    const data = summary?.timeline ?? [];
+    return [...data].reverse(); // mas reciente primero
+  }, [summary?.timeline]);
   const [timelinePage, setTimelinePage] = useState(1);
   const perPage = 7;
   const timelineTotalPages = Math.max(1, Math.ceil(orderedTimeline.length / perPage));
@@ -104,6 +106,7 @@ const FormAuditoria = ({
     summary?.uniqueUsers ??
     (summary?.topUsers ? summary.topUsers.length : undefined);
   const filtersLabel = `${filters.from || '-'} a ${filters.to || '-'}`;
+  type JsPDFWithAutoTable = JsPDFType & { lastAutoTable?: { finalY: number } };
 
   const handleExportPdf = async () => {
     const [{ default: jsPDF }, autoTable] = await Promise.all([
@@ -111,7 +114,7 @@ const FormAuditoria = ({
       import('jspdf-autotable'),
     ]);
 
-    const doc = new jsPDF();
+    const doc: JsPDFWithAutoTable = new jsPDF() as JsPDFWithAutoTable;
     let y = 14;
     doc.setFontSize(16);
     doc.text('Auditoria de eventos', 14, y);
@@ -134,7 +137,7 @@ const FormAuditoria = ({
       styles: { fontSize: 9 },
       headStyles: { fillColor: [244, 241, 235] },
     });
-    const afterSummary = (doc as any).lastAutoTable.finalY + 6;
+    const afterSummary = doc.lastAutoTable ? doc.lastAutoTable.finalY + 6 : y + 10;
 
     if (summary?.topUsers?.length) {
       autoTable.default(doc, {
@@ -151,8 +154,8 @@ const FormAuditoria = ({
       });
     }
 
-    const afterTop = (doc as any).lastAutoTable?.finalY
-      ? (doc as any).lastAutoTable.finalY + 8
+    const afterTop = doc.lastAutoTable?.finalY
+      ? doc.lastAutoTable.finalY + 8
       : afterSummary + 8;
     const eventRows = events.map((evt) => [
       evt.name || evt.email || evt.userId || 'Usuario',

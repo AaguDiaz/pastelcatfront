@@ -1,6 +1,7 @@
 'use client';
 
-import { Beaker, TrendingUp, LineChart } from 'lucide-react';
+import { Beaker, TrendingUp } from 'lucide-react';
+import type { jsPDF as JsPDFType } from 'jspdf';
 import { MateriaHistorialItem, MateriaResumenItem } from '@/interfaces/auditoria';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,13 +56,14 @@ const FormHistorialMateriaPrima = ({
 }: FormHistorialMateriaPrimaProps) => {
   const topChanges = resumen.slice(0, 3);
   const filtersLabel = `${filters.from || '-'} a ${filters.to || '-'}`;
+  type JsPDFWithAutoTable = JsPDFType & { lastAutoTable?: { finalY: number } };
 
   const handleExportPdf = async () => {
     const [{ default: jsPDF }, autoTable] = await Promise.all([
       import('jspdf'),
       import('jspdf-autotable'),
     ]);
-    const doc = new jsPDF();
+    const doc: JsPDFWithAutoTable = new jsPDF() as JsPDFWithAutoTable;
     let y = 14;
     doc.setFontSize(16);
     doc.text('Historial de Materia Prima', 14, y);
@@ -85,7 +87,7 @@ const FormHistorialMateriaPrima = ({
         styles: { fontSize: 9 },
         headStyles: { fillColor: [244, 241, 235] },
       });
-      y = (doc as any).lastAutoTable.finalY + 8;
+      y = doc.lastAutoTable ? doc.lastAutoTable.finalY + 8 : y + 8;
     }
 
     autoTable.default(doc, {
