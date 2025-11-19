@@ -38,8 +38,6 @@ export default function AuditoriaPage() {
     setMateriaSearch,
     setMateriaDateRange,
     setMateriaPage,
-    reloadMateriaHistorial,
-    reloadMateriaResumen,
     errorMessage,
     clearError,
   } = useAuditoriaData();
