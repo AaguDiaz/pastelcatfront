@@ -6,6 +6,7 @@ import FormAuditoria from '@/components/forms/FormAuditoria';
 import FormHistorialMateriaPrima from '@/components/forms/FormHistorialMateriaPrima';
 import { useAuditoriaData } from '@/hooks/useAuditoriaData';
 import { Button } from '@/components/ui/button';
+import ModalError from '@/components/modals/error';
 
 export default function AuditoriaPage() {
   const router = useRouter();
@@ -53,19 +54,11 @@ export default function AuditoriaPage() {
       </div>
 
       {errorMessage && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow">
-          <div className="flex items-center justify-between gap-3">
-            <span className="flex-1">{errorMessage}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-red-700 hover:bg-red-100"
-              onClick={clearError}
-            >
-              Cerrar
-            </Button>
-          </div>
-        </div>
+        <ModalError
+          titulo="Error en auditoría"
+          mensaje={errorMessage}
+          onClose={clearError}
+        />
       )}
 
       <FormAuditoria

@@ -288,7 +288,16 @@ export const useAuditoriaData = () => {
       if (authFilters.to) params.set('endDate', authFilters.to);
 
       const qs = params.toString();
-      const res = await fetchWithAuth<PagedResult<AuthEvent>>(
+      const res = await fetchWithAuth<
+        PagedResult<AuthEvent> & {
+          pagination?: {
+            page?: number;
+            pageSize?: number;
+            totalItems?: number;
+            totalPages?: number;
+          };
+        }
+      >(
         `${API_BASE_URL}/auditoria/auth/events?${qs}`,
       );
       const raw = Array.isArray(res?.data)
@@ -305,9 +314,14 @@ export const useAuditoriaData = () => {
         return Number.isNaN(db) ? -1 : Number.isNaN(da) ? 1 : db - da;
       });
       setAuthEvents(sorted);
-      const totalPages = (res as PagedResult<AuthEvent>)?.totalPages;
-      const totalItems = (res as PagedResult<AuthEvent>)?.totalItems;
-      setAuthEventsTotalPages(Math.max(1, totalPages ?? 1));
+      const pagination = res?.pagination;
+      const totalPages =
+        pagination?.totalPages ?? (res as PagedResult<AuthEvent>)?.totalPages ?? 1;
+      const totalItems =
+        pagination?.totalItems ??
+        (res as PagedResult<AuthEvent>)?.totalItems ??
+        normalized.length;
+      setAuthEventsTotalPages(Math.max(1, totalPages));
       setAuthEventsTotalItems(totalItems ?? normalized.length);
     } catch (err) {
       setErrorMessage(getErrorMessage(err));

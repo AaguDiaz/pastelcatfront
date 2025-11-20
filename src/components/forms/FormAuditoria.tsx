@@ -106,6 +106,21 @@ const FormAuditoria = ({
     summary?.uniqueUsers ??
     (summary?.topUsers ? summary.topUsers.length : undefined);
   const filtersLabel = `${filters.from || '-'} a ${filters.to || '-'}`;
+  const topUsersList = useMemo(() => {
+    if (!summary?.topUsers?.length) {
+      return [];
+    }
+    return [...summary.topUsers]
+      .sort((a, b) => {
+        const totalA = Number(a.total ?? a.logins ?? 0);
+        const totalB = Number(b.total ?? b.logins ?? 0);
+        if (totalB !== totalA) return totalB - totalA;
+        const lastA = a.lastEventAt ?? '';
+        const lastB = b.lastEventAt ?? '';
+        return lastB.localeCompare(lastA);
+      })
+      .slice(0, 4);
+  }, [summary?.topUsers]);
   type JsPDFWithAutoTable = JsPDFType & { lastAutoTable?: { finalY: number } };
 
   const handleExportPdf = async () => {
@@ -252,8 +267,8 @@ const FormAuditoria = ({
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-5">
-        <div className="lg:col-span-3 space-y-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-md">
+      <div className="space-y-4">
+        <div className="space-y-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-md">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-neutral-900">Actividad por dia</h3>
             <span className="text-xs text-neutral-500">
@@ -321,17 +336,17 @@ const FormAuditoria = ({
             <Users className="h-4 w-4 text-neutral-700" />
             <h3 className="text-lg font-semibold text-neutral-900">Top usuarios</h3>
           </div>
-          <div className="space-y-2">
-            {summary?.topUsers?.length ? (
-              summary.topUsers.slice(0, 5).map((user, index) => (
+          {topUsersList.length ? (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              {topUsersList.map((user, index) => (
                 <div
                   key={`${user.userId ?? user.email ?? index}`}
                   className="rounded-xl border border-neutral-100 bg-pastel-cream px-3 py-2"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <div>
                       <p className="text-sm font-semibold text-neutral-900">
-                        {user.name || user.email || 'Usuario'}
+                        {index + 1}. {user.name || user.email || 'Usuario'}
                       </p>
                       <p className="text-xs text-neutral-500">
                         {user.email || user.userId || 'Sin email'}
@@ -347,11 +362,11 @@ const FormAuditoria = ({
                     </p>
                   )}
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-neutral-500">Sin usuarios destacados.</p>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-neutral-500">Sin usuarios destacados.</p>
+          )}
         </div>
       </div>
 
