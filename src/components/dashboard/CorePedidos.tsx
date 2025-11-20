@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -9,96 +9,19 @@ import { BarChart3, CalendarRange, PieChart, RefreshCw, ShoppingBag, TableProper
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  ClienteResumen,
+  DashboardResponse,
+  MateriaVariacion,
+  PedidoEstado,
+  ProductoDetalle,
+  ProductoTop,
+  RevenuePoint,
+} from '@/interfaces/dashboard';
 import { api } from '@/lib/api';
 import { debugFetch } from '@/lib/debugFetch';
+import { exportDashboardPdf } from '@/lib/exportDashboardPdf';
 
-type DashboardFilters = {
-  fechaInicio: string;
-  fechaFin: string;
-  granularidad: 'day' | 'week' | 'month';
-};
-
-type DashboardResumen = {
-  ingresosTotales: number;
-  totalPedidos: number;
-  ticketPromedio: number;
-};
-
-type RevenuePoint = {
-  key: string;
-  label: string;
-  periodStart: string;
-  ingresos: number;
-  pedidos: number;
-};
-
-type PedidoEstado = {
-  estado: string;
-  cantidad: number;
-};
-
-type MateriaVariacion = {
-  id_materiaprima: number;
-  nombre: string;
-  variacionPorcentual: number;
-  precioInicial: number;
-  precioFinal: number;
-  fechaInicial: string;
-  fechaFinal: string;
-};
-
-
-type ProductoTop = {
-  id_torta: number;
-  nombre: string;
-  ingresos: number;
-  cantidad: number;
-};
-
-type ProductoDetalle = {
-  id: number;
-  tipo: 'torta' | 'bandeja';
-  nombre: string;
-  cantidadVendida: number;
-  ingresosTotales: number;
-  precioPromedio: number;
-};
-
-type ClienteResumen = {
-  id_cliente: number;
-  nombre: string;
-  email: string | null;
-  totalGastado: number;
-  cantidadPedidos: number;
-};
-
-type DashboardClientes = {
-  top?: ClienteResumen[] | null;
-};
-
-
-
-type DashboardProductos = {
-  topTortas?: ProductoTop[] | null;
-  tablaProductos?: ProductoDetalle[] | null;
-};
-
-type DashboardVentas = {
-  tendenciaIngresos?: {
-    granularity: 'day' | 'week' | 'month';
-    series: RevenuePoint[];
-  } | null;
-  pedidosPorEstado?: PedidoEstado[] | null;
-  materiasPrimaMasCaras?: MateriaVariacion[] | null;
-};
-
-type DashboardResponse = {
-  filtros: DashboardFilters;
-  resumen: DashboardResumen;
-  ventas?: DashboardVentas | null;
-  productos?: DashboardProductos | null;
-  clientes?: DashboardClientes | null;
-};
 type QuickRange = {
   id: string;
   label: string;
@@ -112,6 +35,13 @@ const QUICK_RANGES: QuickRange[] = [
   { id: '30', label: 'Ultimos 30 dias', days: 30 },
   { id: '90', label: 'Ultimos 90 dias', days: 90 },
 ];
+
+const EMPTY_REVENUE: RevenuePoint[] = [];
+const EMPTY_ESTADOS: PedidoEstado[] = [];
+const EMPTY_MATERIAS: MateriaVariacion[] = [];
+const EMPTY_PRODUCTO_TOP: ProductoTop[] = [];
+const EMPTY_PRODUCTO_DETALLE: ProductoDetalle[] = [];
+const EMPTY_CLIENTES: ClienteResumen[] = [];
 
 const DASHBOARD_ENDPOINT = `${api}/dashboard`;
 
@@ -206,11 +136,6 @@ const CorePedidos = () => {
     fetchDashboard({ start: startDate, end: endDate });
   }, [fetchDashboard, startDate, endDate]);
 
-  const handleApplyFilters = () => {
-    setActivePreset('custom');
-    fetchDashboard({ start: startDate, end: endDate }, { silent: Boolean(data) });
-  };
-
   const handlePresetClick = (preset: QuickRange) => {
     const end = new Date();
     const start = addDays(end, -(preset.days - 1));
@@ -222,21 +147,55 @@ const CorePedidos = () => {
     fetchDashboard({ start: formattedStart, end: formattedEnd }, { silent: Boolean(data) });
   };
 
+  const ingresosTotalCanvas = useRef<HTMLCanvasElement | null>(null);
+  const ingresosPedidosCanvas = useRef<HTMLCanvasElement | null>(null);
+  const ingresosEventosCanvas = useRef<HTMLCanvasElement | null>(null);
+  const pedidosEstadoCanvas = useRef<HTMLCanvasElement | null>(null);
+  const eventosEstadoCanvas = useRef<HTMLCanvasElement | null>(null);
+
+  const handleDownload = useCallback(() => {
+    if (!data?.filtros) return;
+
+    const charts: Partial<Record<'ingresosTotal' | 'ingresosPedidos' | 'ingresosEventos' | 'pedidosEstado' | 'eventosEstado', string>> = {};
+    if (ingresosTotalCanvas.current) charts.ingresosTotal = ingresosTotalCanvas.current.toDataURL('image/png', 1);
+    if (ingresosPedidosCanvas.current) charts.ingresosPedidos = ingresosPedidosCanvas.current.toDataURL('image/png', 1);
+    if (ingresosEventosCanvas.current) charts.ingresosEventos = ingresosEventosCanvas.current.toDataURL('image/png', 1);
+    if (pedidosEstadoCanvas.current) charts.pedidosEstado = pedidosEstadoCanvas.current.toDataURL('image/png', 1);
+    if (eventosEstadoCanvas.current) charts.eventosEstado = eventosEstadoCanvas.current.toDataURL('image/png', 1);
+
+    exportDashboardPdf(data as DashboardResponse, {
+      startLabel: formatDateLabel(data.filtros.fechaInicio),
+      endLabel: formatDateLabel(data.filtros.fechaFin),
+      charts,
+    });
+  }, [data]);
+
   const filtros = data?.filtros;
   const resumen = data?.resumen;
+  const resumenes = data?.resumenes || null;
+  const comparativo = data?.comparativo || null;
   const ventas = data?.ventas;
   const productos = data?.productos;
   const clientes = data?.clientes;
-  const revenueSeries: RevenuePoint[] = ventas?.tendenciaIngresos?.series ?? [];
-  const revenueChartData = useMemo(() => {
-    if (!revenueSeries.length) return null;
-    return {
-      labels: revenueSeries.map((point) => point.label || point.key),
-      values: revenueSeries.map((point) => Number(point.ingresos) || 0),
-    };
-  }, [revenueSeries]);
+  const agenda = data?.agenda || null;
 
-  const statusSeries: PedidoEstado[] = ventas?.pedidosPorEstado ?? [];
+  const revenueSeriesPedidos: RevenuePoint[] = ventas?.tendenciaIngresos?.series ?? EMPTY_REVENUE;
+  const revenueSeriesEventos: RevenuePoint[] = ventas?.tendenciaIngresosEventos?.series ?? EMPTY_REVENUE;
+  const revenueSeriesTotal: RevenuePoint[] = ventas?.tendenciaIngresosTotal?.series ?? EMPTY_REVENUE;
+
+  const toChartData = useCallback((series: RevenuePoint[]) => {
+    if (!series.length) return null;
+    return {
+      labels: series.map((point) => point.label || point.key),
+      values: series.map((point) => Number(point.ingresos) || 0),
+    };
+  }, []);
+
+  const revenueChartPedidos = useMemo(() => toChartData(revenueSeriesPedidos), [revenueSeriesPedidos, toChartData]);
+  const revenueChartEventos = useMemo(() => toChartData(revenueSeriesEventos), [revenueSeriesEventos, toChartData]);
+  const revenueChartTotal = useMemo(() => toChartData(revenueSeriesTotal), [revenueSeriesTotal, toChartData]);
+
+  const statusSeries: PedidoEstado[] = ventas?.pedidosPorEstado ?? EMPTY_ESTADOS;
   const statusChartData = useMemo(() => {
     if (!statusSeries.length) return null;
     const labels = statusSeries.map((item) => item.estado || 'Sin estado');
@@ -246,7 +205,17 @@ const CorePedidos = () => {
     return { labels, values, colors };
   }, [statusSeries]);
 
-  const materiaSeries: MateriaVariacion[] = ventas?.materiasPrimaMasCaras ?? [];
+  const statusSeriesEventos: PedidoEstado[] = ventas?.eventosPorEstado ?? EMPTY_ESTADOS;
+  const statusChartEventos = useMemo(() => {
+    if (!statusSeriesEventos.length) return null;
+    const labels = statusSeriesEventos.map((item) => item.estado || 'Sin estado');
+    const values = statusSeriesEventos.map((item) => Number(item.cantidad) || 0);
+    const palette = ['#8cc0de', '#f3ced6', '#a8e6cf', '#f9e79f', '#ff9f80', '#c3a6ff'];
+    const colors = labels.map((_, index) => palette[index % palette.length]);
+    return { labels, values, colors };
+  }, [statusSeriesEventos]);
+
+  const materiaSeries: MateriaVariacion[] = ventas?.materiasPrimaMasCaras ?? EMPTY_MATERIAS;
   const materiasChartData = useMemo(() => {
     if (!materiaSeries.length) return null;
     const labels = materiaSeries.map((item) => item.nombre || `Materia ${item.id_materiaprima}`);
@@ -254,7 +223,8 @@ const CorePedidos = () => {
     return { labels, values };
   }, [materiaSeries]);
 
-  const topTortasSeries: ProductoTop[] = productos?.topTortas ?? [];
+  const topTortasSeries: ProductoTop[] = productos?.topTortas ?? EMPTY_PRODUCTO_TOP;
+  const topBandejasSeries: ProductoTop[] = productos?.topBandejas ?? EMPTY_PRODUCTO_TOP;
   const topTortasChartData = useMemo(() => {
     if (!topTortasSeries.length) return null;
     const labels = topTortasSeries.map((item) => item.nombre || `Torta ${item.id_torta}`);
@@ -262,8 +232,15 @@ const CorePedidos = () => {
     return { labels, values };
   }, [topTortasSeries]);
 
-  const productosTabla: ProductoDetalle[] = productos?.tablaProductos ?? [];
-  const clientesTop: ClienteResumen[] = clientes?.top ?? [];
+  const topBandejasChartData = useMemo(() => {
+    if (!topBandejasSeries.length) return null;
+    const labels = topBandejasSeries.map((item) => item.nombre || `Bandeja ${item.id_torta ?? item.id_bandeja ?? ''}`);
+    const values = topBandejasSeries.map((item) => Number(item.ingresos) || 0);
+    return { labels, values };
+  }, [topBandejasSeries]);
+
+  const productosTabla: ProductoDetalle[] = productos?.tablaProductos ?? EMPTY_PRODUCTO_DETALLE;
+  const clientesTop: ClienteResumen[] = clientes?.top ?? EMPTY_CLIENTES;
   const clientesTablaData = useMemo<Array<{ rank: number } & ClienteResumen>>(() => {
     if (!clientesTop.length) return [];
     return clientesTop.map((cliente, index) => ({
@@ -279,8 +256,8 @@ const CorePedidos = () => {
   return (
     <section className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-4 py-10 md:px-8">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-neutral-900">Dashboard de ventas</h1>
-        <p className="text-sm text-neutral-600">Analiza el rendimiento de tus pedidos filtrando por rango de fechas.</p>
+        <h1 className="text-3xl font-semibold text-neutral-900">Reportes de operaciones</h1>
+        <p className="text-sm text-neutral-600">Pedidos y eventos unificados: ingresos, estados y prximos compromisos.</p>
       </header>
 
       <div className="rounded-2xl border border-pastel-brown/20 bg-pastel-cream p-6 shadow-sm">
@@ -331,11 +308,11 @@ const CorePedidos = () => {
             </Button>
             <Button
               type="button"
-              onClick={handleApplyFilters}
-              disabled={loading || refreshing}
+              onClick={handleDownload}
+              disabled={loading || refreshing || !data}
               className="bg-pastel-blue text-white hover:bg-pastel-blue/90"
             >
-              Aplicar filtros
+              Descargar PDF
             </Button>
           </div>
         </div>
@@ -363,12 +340,12 @@ const CorePedidos = () => {
       </div>
 
       <section aria-labelledby="section-resumen" className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 id="section-resumen" className="text-xl font-semibold text-neutral-900">
               Seccion A - Resumen general
             </h2>
-            <p className="text-sm text-neutral-600">Indicadores claves de ventas para el periodo seleccionado.</p>
+            <p className="text-sm text-neutral-600">Indicadores clave de pedidos y eventos para el rango seleccionado.</p>
           </div>
           {filtros && (
             <span className="text-xs uppercase tracking-wide text-neutral-500">
@@ -377,7 +354,7 @@ const CorePedidos = () => {
           )}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard
             loading={isInitialLoading}
             icon={<TrendingUp className="text-pastel-blue" size={28} />}
@@ -388,18 +365,66 @@ const CorePedidos = () => {
           <KpiCard
             loading={isInitialLoading}
             icon={<ShoppingBag className="text-pastel-pink" size={28} />}
-            label="Total de pedidos"
-            value={resumen ? numberFormatter.format(resumen.totalPedidos) : '--'}
+            label="Operaciones totales"
+            value={resumen ? numberFormatter.format(resumen.totalOperaciones) : '--'}
             accent="bg-pastel-pink/20"
           />
           <KpiCard
             loading={isInitialLoading}
             icon={<Wallet className="text-pastel-green" size={28} />}
-            label="Ticket promedio"
+            label="Ingresos pedidos"
+            value={resumenes?.pedidos ? currencyFormatter.format(resumenes.pedidos.ingresosTotales) : '--'}
+            accent="bg-pastel-green/20"
+          />
+          <KpiCard
+            loading={isInitialLoading}
+            icon={<Wallet className="text-pastel-yellow" size={28} />}
+            label="Ingresos eventos"
+            value={resumenes?.eventos ? currencyFormatter.format(resumenes.eventos.ingresosTotales) : '--'}
+            accent="bg-pastel-yellow/40"
+          />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          <KpiCard
+            loading={isInitialLoading}
+            icon={<TrendingUp className="text-pastel-blue" size={28} />}
+            label="Ticket promedio global"
             value={resumen ? currencyFormatter.format(resumen.ticketPromedio) : '--'}
+            accent="bg-pastel-blue/10"
+          />
+          <KpiCard
+            loading={isInitialLoading}
+            icon={<ShoppingBag className="text-pastel-pink" size={28} />}
+            label="Ticket promedio pedidos"
+            value={resumenes?.pedidos ? currencyFormatter.format(resumenes.pedidos.ticketPromedio) : '--'}
+            accent="bg-pastel-pink/20"
+          />
+          <KpiCard
+            loading={isInitialLoading}
+            icon={<Wallet className="text-pastel-green" size={28} />}
+            label="Ticket promedio eventos"
+            value={resumenes?.eventos ? currencyFormatter.format(resumenes.eventos.ticketPromedio) : '--'}
             accent="bg-pastel-green/20"
           />
         </div>
+
+        {comparativo ? (
+          <div className="rounded-xl border border-pastel-brown/20 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-neutral-500">Comparativo</p>
+                <h3 className="text-sm text-neutral-700">
+                  Frente al rango previo ({formatDateLabel(comparativo.rangoPrevio.fechaInicio)} - {formatDateLabel(comparativo.rangoPrevio.fechaFin)})
+                </h3>
+              </div>
+              <div className="flex gap-3">
+                <VariationBadge label="Ingresos" value={comparativo.variaciones?.ingresos} />
+                <VariationBadge label="Operaciones" value={comparativo.variaciones?.operaciones} />
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section aria-labelledby="section-ventas" className="space-y-6">
@@ -408,23 +433,54 @@ const CorePedidos = () => {
             <h2 id="section-ventas" className="text-xl font-semibold text-neutral-900">
               Seccion B - Ventas y tendencias
             </h2>
-            <p className="text-sm text-neutral-600">Analiza como evolucionan las ventas y el estado operativo de los pedidos.</p>
+            <p className="text-sm text-neutral-600">Ingresos y estados de pedidos y eventos.</p>
           </div>
         </div>
 
         <div className="grid gap-4 xl:grid-cols-3">
           <ChartPanel
-            title="Evolucion de ingresos"
-            subtitle={ventas?.tendenciaIngresos?.granularity ? `Vista ${ventas.tendenciaIngresos.granularity}` : 'Sin granularidad sugerida'}
+            title="Ingresos combinados"
+            subtitle="Pedidos + Eventos"
             icon={<TrendingUp className="text-pastel-blue" size={20} />}
             loading={isInitialLoading}
             refreshing={isRefreshing}
-            empty={!isInitialLoading && (!revenueChartData || revenueChartData.labels.length === 0)}
+            empty={!isInitialLoading && (!revenueChartTotal || revenueChartTotal.labels.length === 0)}
             className="xl:col-span-2"
             emptyMessage="No hay datos de ingresos para el rango seleccionado."
           >
             <div className="h-72">
-              <LineChart data={revenueChartData} />
+              <LineChart data={revenueChartTotal} onReady={(canvas) => { ingresosTotalCanvas.current = canvas; }} />
+            </div>
+          </ChartPanel>
+
+          <ChartPanel
+            title="Ingresos por pedidos"
+            subtitle={ventas?.tendenciaIngresos?.granularity ? `Vista ${ventas.tendenciaIngresos.granularity}` : 'Sin granularidad sugerida'}
+            icon={<TrendingUp className="text-pastel-blue" size={20} />}
+            loading={isInitialLoading}
+            refreshing={isRefreshing}
+            empty={!isInitialLoading && (!revenueChartPedidos || revenueChartPedidos.labels.length === 0)}
+            emptyMessage="No hay datos de ingresos de pedidos."
+          >
+            <div className="h-72">
+              <LineChart data={revenueChartPedidos} onReady={(canvas) => { ingresosPedidosCanvas.current = canvas; }} />
+            </div>
+          </ChartPanel>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-3">
+          <ChartPanel
+            title="Ingresos por eventos"
+            subtitle={ventas?.tendenciaIngresosEventos?.granularity ? `Vista ${ventas.tendenciaIngresosEventos.granularity}` : 'Sin granularidad sugerida'}
+            icon={<TrendingUp className="text-pastel-blue" size={20} />}
+            loading={isInitialLoading}
+            refreshing={isRefreshing}
+            empty={!isInitialLoading && (!revenueChartEventos || revenueChartEventos.labels.length === 0)}
+            emptyMessage="No hay datos de ingresos de eventos."
+            className="xl:col-span-2"
+          >
+            <div className="h-72">
+              <LineChart data={revenueChartEventos} onReady={(canvas) => { ingresosEventosCanvas.current = canvas; }} />
             </div>
           </ChartPanel>
 
@@ -438,24 +494,41 @@ const CorePedidos = () => {
             emptyMessage="No hay pedidos en los estados consultados."
           >
             <div className="h-72">
-              <DonutChart data={statusChartData} />
+              <DonutChart data={statusChartData} onReady={(canvas) => { pedidosEstadoCanvas.current = canvas; }} />
             </div>
           </ChartPanel>
         </div>
 
-        <ChartPanel
-          title="Materias primas con mayor aumento"
-          subtitle="Variacion porcentual"
-          icon={<BarChart3 className="text-pastel-yellow" size={20} />}
-          loading={isInitialLoading}
-          refreshing={isRefreshing}
-          empty={!isInitialLoading && (!materiasChartData || materiasChartData.labels.length === 0)}
-          emptyMessage="No se registraron aumentos en el periodo seleccionado."
-        >
-          <div className="h-72">
-            <HorizontalBarChart data={materiasChartData} />
-          </div>
-        </ChartPanel>
+        <div className="grid gap-4 xl:grid-cols-3">
+          <ChartPanel
+            title="Eventos por estado"
+            subtitle="Distribucion actual"
+            icon={<PieChart className="text-pastel-pink" size={20} />}
+            loading={isInitialLoading}
+            refreshing={isRefreshing}
+            empty={!isInitialLoading && (!statusChartEventos || statusChartEventos.labels.length === 0)}
+            emptyMessage="No hay eventos en los estados consultados."
+          >
+            <div className="h-72">
+              <DonutChart data={statusChartEventos} onReady={(canvas) => { eventosEstadoCanvas.current = canvas; }} />
+            </div>
+          </ChartPanel>
+
+          <ChartPanel
+            title="Materias primas con mayor aumento"
+            subtitle="Variacion porcentual"
+            icon={<BarChart3 className="text-pastel-yellow" size={20} />}
+            loading={isInitialLoading}
+            refreshing={isRefreshing}
+            empty={!isInitialLoading && (!materiasChartData || materiasChartData.labels.length === 0)}
+            emptyMessage="No se registraron aumentos en el periodo seleccionado."
+            className="xl:col-span-2"
+          >
+            <div className="h-72">
+              <HorizontalBarChart data={materiasChartData} />
+            </div>
+          </ChartPanel>
+        </div>
       </section>
       <section aria-labelledby="section-productos" className="space-y-6">
         <div className="flex items-center justify-between">
@@ -467,39 +540,51 @@ const CorePedidos = () => {
           </div>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-5">
+        <div className="grid gap-4 xl:grid-cols-2">
           <ChartPanel
             title="Top 10 tortas por ingresos"
-            subtitle="Ingresos acumulados"
+            subtitle="Pedidos + Eventos"
             icon={<BarChart3 className="text-pastel-blue" size={20} />}
             loading={isInitialLoading}
             refreshing={isRefreshing}
             empty={!isInitialLoading && (!topTortasChartData || topTortasChartData.labels.length === 0)}
             emptyMessage="No se registran ventas de tortas en el periodo."
-            className="xl:col-span-2"
           >
             <div className="h-72">
-              <HorizontalBarChart data={topTortasChartData} />
+              <HorizontalBarChart data={topTortasChartData} valueFormatter={(v) => currencyFormatter.format(v)} />
             </div>
           </ChartPanel>
 
           <ChartPanel
-            title="Detalle de productos"
-            subtitle="Ingresos, cantidades y promedios"
-            icon={<TableProperties className="text-pastel-brown" size={20} />}
+            title="Top bandejas por ingresos"
+            subtitle="Pedidos + Eventos"
+            icon={<BarChart3 className="text-pastel-blue" size={20} />}
             loading={isInitialLoading}
             refreshing={isRefreshing}
-            empty={!isInitialLoading && productosTabla.length === 0}
-            emptyMessage="No hay datos de productos para mostrar."
-            className="xl:col-span-3"
+            empty={!isInitialLoading && (!topBandejasChartData || topBandejasChartData.labels.length === 0)}
+            emptyMessage="No se registran ventas de bandejas en el periodo."
           >
-            <ProductsTable
-              items={productosTabla}
-              currencyFormatter={currencyFormatter}
-              numberFormatter={numberFormatter}
-            />
+            <div className="h-72">
+              <HorizontalBarChart data={topBandejasChartData} valueFormatter={(v) => currencyFormatter.format(v)} />
+            </div>
           </ChartPanel>
         </div>
+
+        <ChartPanel
+          title="Detalle de productos"
+          subtitle="Ingresos, cantidades y promedios"
+          icon={<TableProperties className="text-pastel-brown" size={20} />}
+          loading={isInitialLoading}
+          refreshing={isRefreshing}
+          empty={!isInitialLoading && productosTabla.length === 0}
+          emptyMessage="No hay datos de productos para mostrar."
+        >
+          <ProductsTable
+            items={productosTabla}
+            currencyFormatter={currencyFormatter}
+            numberFormatter={numberFormatter}
+          />
+        </ChartPanel>
       </section>
 
       <section aria-labelledby="section-clientes" className="space-y-6">
@@ -528,6 +613,34 @@ const CorePedidos = () => {
           />
         </ChartPanel>
       </section>
+
+      <section aria-labelledby="section-agenda" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 id="section-agenda" className="text-xl font-semibold text-neutral-900">
+              Seccion E - Agenda proxima
+            </h2>
+            <p className="text-sm text-neutral-600">Prximas entregas de pedidos y eventos.</p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <AgendaPanel
+            title="Pedidos prximos"
+            items={agenda?.pedidos ?? []}
+            currencyFormatter={currencyFormatter}
+            typeLabel="pedido"
+            loading={isInitialLoading}
+          />
+          <AgendaPanel
+            title="Eventos prximos"
+            items={agenda?.eventos ?? []}
+            currencyFormatter={currencyFormatter}
+            typeLabel="evento"
+            loading={isInitialLoading}
+          />
+        </div>
+      </section>
     </section>
   );
 };
@@ -555,6 +668,29 @@ const KpiCard = ({ loading, icon, label, value, accent }: KpiCardProps) => (
     )}
   </div>
 );
+
+type VariationBadgeProps = {
+  label: string;
+  value: number | null | undefined;
+};
+
+const VariationBadge = ({ label, value }: VariationBadgeProps) => {
+  if (value === null || value === undefined) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600">
+        {label}: s/d
+      </span>
+    );
+  }
+  const isPositive = value >= 0;
+  const color = isPositive ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100';
+  const sign = isPositive ? '+' : '';
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs ${color}`}>
+      {label}: {sign}{value}%
+    </span>
+  );
+};
 
 type ChartPanelProps = {
   title: string;
@@ -633,9 +769,10 @@ const ProductsTable = ({ items, currencyFormatter, numberFormatter }: ProductsTa
 
 type LineChartProps = {
   data: { labels: string[]; values: number[] } | null;
+  onReady?: (canvas: HTMLCanvasElement | null) => void;
 };
 
-const LineChart = ({ data }: LineChartProps) => {
+const LineChart = ({ data, onReady }: LineChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
 
@@ -658,6 +795,7 @@ const LineChart = ({ data }: LineChartProps) => {
       chartRef.current.data.labels = data.labels;
       chartRef.current.data.datasets[0].data = data.values;
       chartRef.current.update();
+      onReady?.(canvasRef.current);
       return;
     }
 
@@ -709,11 +847,13 @@ const LineChart = ({ data }: LineChartProps) => {
       },
     });
 
+    onReady?.(canvasRef.current);
+
     return () => {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [data]);
+  }, [data, onReady]);
 
   useEffect(() => () => {
     chartRef.current?.destroy();
@@ -731,9 +871,10 @@ type DonutChartData = {
 
 type DonutChartProps = {
   data: DonutChartData | null;
+  onReady?: (canvas: HTMLCanvasElement | null) => void;
 };
 
-const DonutChart = ({ data }: DonutChartProps) => {
+const DonutChart = ({ data, onReady }: DonutChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
 
@@ -757,6 +898,7 @@ const DonutChart = ({ data }: DonutChartProps) => {
       chartRef.current.data.datasets[0].data = data.values;
       chartRef.current.data.datasets[0].backgroundColor = data.colors;
       chartRef.current.update();
+      onReady?.(canvasRef.current);
       return;
     }
 
@@ -790,11 +932,13 @@ const DonutChart = ({ data }: DonutChartProps) => {
       },
     });
 
+    onReady?.(canvasRef.current);
+
     return () => {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [data]);
+  }, [data, onReady]);
 
   useEffect(() => () => {
     chartRef.current?.destroy();
@@ -811,9 +955,10 @@ type HorizontalBarChartData = {
 
 type HorizontalBarChartProps = {
   data: HorizontalBarChartData | null;
+  valueFormatter?: (value: number) => string;
 };
 
-const HorizontalBarChart = ({ data }: HorizontalBarChartProps) => {
+const HorizontalBarChart = ({ data, valueFormatter }: HorizontalBarChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
 
@@ -839,6 +984,12 @@ const HorizontalBarChart = ({ data }: HorizontalBarChartProps) => {
       return;
     }
 
+    const formatValue = (value: number | string) => {
+      const num = Number(value);
+      if (Number.isNaN(num)) return String(value);
+      return valueFormatter ? valueFormatter(num) : `${num}%`;
+    };
+
     chartRef.current = new Chart(context, {
       type: 'bar',
       data: {
@@ -858,7 +1009,7 @@ const HorizontalBarChart = ({ data }: HorizontalBarChartProps) => {
         maintainAspectRatio: false,
         scales: {
           x: {
-            ticks: { color: '#6b7280', callback: (value) => `${value}%` },
+            ticks: { color: '#6b7280', callback: (value) => formatValue(value as number) },
             grid: { color: 'rgba(148, 163, 184, 0.2)' },
           },
           y: {
@@ -870,7 +1021,7 @@ const HorizontalBarChart = ({ data }: HorizontalBarChartProps) => {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (context) => `${context.parsed.x ?? 0}%`,
+              label: (context) => formatValue(context.parsed.x ?? 0),
             },
           },
         },
@@ -881,7 +1032,7 @@ const HorizontalBarChart = ({ data }: HorizontalBarChartProps) => {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [data]);
+  }, [data, valueFormatter]);
 
   useEffect(() => () => {
     chartRef.current?.destroy();
@@ -916,21 +1067,84 @@ const ClientsTable = ({ items, currencyFormatter, numberFormatter }: ClientsTabl
           <th className="px-3 py-2 text-left font-semibold">Cliente</th>
           <th className="px-3 py-2 text-left font-semibold">Email</th>
           <th className="px-3 py-2 text-right font-semibold">Total gastado</th>
+          <th className="px-3 py-2 text-right font-semibold">Ingresos pedidos</th>
+          <th className="px-3 py-2 text-right font-semibold">Ingresos eventos</th>
           <th className="px-3 py-2 text-right font-semibold">Pedidos</th>
+          <th className="px-3 py-2 text-right font-semibold">Eventos</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-pastel-brown/10">
-        {items.map((cliente) => (
-          <tr key={cliente.id_cliente} className="odd:bg-pastel-cream/30">
-            <td className="px-3 py-2 text-neutral-600">{cliente.rank}</td>
-            <td className="px-3 py-2 font-medium text-neutral-800">{cliente.nombre}</td>
-            <td className="px-3 py-2 text-neutral-600">{cliente.email || "Sin email"}</td>
-            <td className="px-3 py-2 text-right text-neutral-700">{currencyFormatter.format(cliente.totalGastado)}</td>
-            <td className="px-3 py-2 text-right text-neutral-700">{numberFormatter.format(cliente.cantidadPedidos)}</td>
-          </tr>
-        ))}
+        {items.map((cliente) => {
+          const key = cliente.id_cliente ?? cliente.id_perfil ?? `${cliente.nombre}-${cliente.rank}`;
+          return (
+            <tr key={key} className="odd:bg-pastel-cream/30">
+              <td className="px-3 py-2 text-neutral-600">{cliente.rank}</td>
+              <td className="px-3 py-2 font-medium text-neutral-800">{cliente.nombre}</td>
+              <td className="px-3 py-2 text-neutral-600">{cliente.email || 'Sin email'}</td>
+              <td className="px-3 py-2 text-right text-neutral-700">{currencyFormatter.format(cliente.totalGastado)}</td>
+              <td className="px-3 py-2 text-right text-neutral-700">
+                {currencyFormatter.format(cliente.ingresosPedidos ?? cliente.totalGastado ?? 0)}
+              </td>
+              <td className="px-3 py-2 text-right text-neutral-700">
+                {currencyFormatter.format(cliente.ingresosEventos ?? 0)}
+              </td>
+              <td className="px-3 py-2 text-right text-neutral-700">{numberFormatter.format(cliente.cantidadPedidos ?? 0)}</td>
+              <td className="px-3 py-2 text-right text-neutral-700">{numberFormatter.format(cliente.cantidadEventos ?? 0)}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
+  </div>
+);
+
+type AgendaItem = {
+  id?: number | null;
+  fecha_entrega?: string | null;
+  total_final?: number | null;
+  cliente?: string | null;
+  tipo?: string | null;
+};
+
+type AgendaPanelProps = {
+  title: string;
+  items: AgendaItem[];
+  currencyFormatter: Intl.NumberFormat;
+  typeLabel: string;
+  loading: boolean;
+};
+
+const AgendaPanel = ({ title, items, currencyFormatter, typeLabel, loading }: AgendaPanelProps) => (
+  <div className="rounded-2xl border border-pastel-brown/10 bg-white p-6 shadow-sm">
+    <div className="flex items-center justify-between">
+      <div className="space-y-1">
+        <h3 className="text-base font-semibold text-neutral-900">{title}</h3>
+        <p className="text-xs text-neutral-500">Prximos {typeLabel}s en los prximos das.</p>
+      </div>
+    </div>
+    {loading ? (
+      <div className="mt-4 h-28 animate-pulse rounded-lg bg-pastel-blue/10" />
+    ) : !items.length ? (
+      <div className="mt-4 rounded-lg border border-dashed border-pastel-brown/20 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">
+        Sin {typeLabel}s prximos.
+      </div>
+    ) : (
+      <ul className="mt-4 space-y-3">
+        {items.map((item) => (
+          <li key={`${typeLabel}-${item.id ?? Math.random()}`} className="rounded-lg border border-pastel-brown/10 bg-pastel-cream/50 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-neutral-900">{item.cliente || 'Sin cliente'}</p>
+                <p className="text-xs text-neutral-500">{item.fecha_entrega ? formatDateLabel(item.fecha_entrega) : 'Fecha no definida'}</p>
+              </div>
+              <div className="text-sm font-semibold text-neutral-800">
+                {currencyFormatter.format(item.total_final ?? 0)}
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )}
   </div>
 );
 
