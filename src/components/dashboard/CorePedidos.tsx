@@ -648,7 +648,7 @@ const CorePedidos = () => {
             emptyMessage="No se registran ventas de tortas en el periodo."
           >
             <div className="h-72">
-              <HorizontalBarChart data={topTortasChartData} />
+              <HorizontalBarChart data={topTortasChartData} valueFormatter={(v) => currencyFormatter.format(v)} />
             </div>
           </ChartPanel>
 
@@ -662,7 +662,7 @@ const CorePedidos = () => {
             emptyMessage="No se registran ventas de bandejas en el periodo."
           >
             <div className="h-72">
-              <HorizontalBarChart data={topBandejasChartData} />
+              <HorizontalBarChart data={topBandejasChartData} valueFormatter={(v) => currencyFormatter.format(v)} />
             </div>
           </ChartPanel>
         </div>
@@ -710,6 +710,34 @@ const CorePedidos = () => {
           />
         </ChartPanel>
       </section>
+
+      <section aria-labelledby="section-agenda" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 id="section-agenda" className="text-xl font-semibold text-neutral-900">
+              Seccion E - Agenda proxima
+            </h2>
+            <p className="text-sm text-neutral-600">Próximas entregas de pedidos y eventos.</p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <AgendaPanel
+            title="Pedidos próximos"
+            items={agenda?.pedidos ?? []}
+            currencyFormatter={currencyFormatter}
+            typeLabel="pedido"
+            loading={isInitialLoading}
+          />
+          <AgendaPanel
+            title="Eventos próximos"
+            items={agenda?.eventos ?? []}
+            currencyFormatter={currencyFormatter}
+            typeLabel="evento"
+            loading={isInitialLoading}
+          />
+        </div>
+      </section>
     </section>
   );
 };
@@ -737,6 +765,29 @@ const KpiCard = ({ loading, icon, label, value, accent }: KpiCardProps) => (
     )}
   </div>
 );
+
+type VariationBadgeProps = {
+  label: string;
+  value: number | null | undefined;
+};
+
+const VariationBadge = ({ label, value }: VariationBadgeProps) => {
+  if (value === null || value === undefined) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600">
+        {label}: s/d
+      </span>
+    );
+  }
+  const isPositive = value >= 0;
+  const color = isPositive ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100';
+  const sign = isPositive ? '+' : '';
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs ${color}`}>
+      {label}: {sign}{value}%
+    </span>
+  );
+};
 
 type ChartPanelProps = {
   title: string;
@@ -993,9 +1044,10 @@ type HorizontalBarChartData = {
 
 type HorizontalBarChartProps = {
   data: HorizontalBarChartData | null;
+  valueFormatter?: (value: number) => string;
 };
 
-const HorizontalBarChart = ({ data }: HorizontalBarChartProps) => {
+const HorizontalBarChart = ({ data, valueFormatter }: HorizontalBarChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
 
@@ -1021,6 +1073,12 @@ const HorizontalBarChart = ({ data }: HorizontalBarChartProps) => {
       return;
     }
 
+    const formatValue = (value: number | string) => {
+      const num = Number(value);
+      if (Number.isNaN(num)) return String(value);
+      return valueFormatter ? valueFormatter(num) : `${num}%`;
+    };
+
     chartRef.current = new Chart(context, {
       type: 'bar',
       data: {
@@ -1040,7 +1098,7 @@ const HorizontalBarChart = ({ data }: HorizontalBarChartProps) => {
         maintainAspectRatio: false,
         scales: {
           x: {
-            ticks: { color: '#6b7280', callback: (value) => `${value}%` },
+            ticks: { color: '#6b7280', callback: (value) => formatValue(value as number) },
             grid: { color: 'rgba(148, 163, 184, 0.2)' },
           },
           y: {
@@ -1052,7 +1110,7 @@ const HorizontalBarChart = ({ data }: HorizontalBarChartProps) => {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (context) => `${context.parsed.x ?? 0}%`,
+              label: (context) => formatValue(context.parsed.x ?? 0),
             },
           },
         },
@@ -1063,7 +1121,7 @@ const HorizontalBarChart = ({ data }: HorizontalBarChartProps) => {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [data]);
+  }, [data, valueFormatter]);
 
   useEffect(() => () => {
     chartRef.current?.destroy();
@@ -1126,6 +1184,56 @@ const ClientsTable = ({ items, currencyFormatter, numberFormatter }: ClientsTabl
         })}
       </tbody>
     </table>
+  </div>
+);
+
+type AgendaItem = {
+  id?: number | null;
+  fecha_entrega?: string | null;
+  total_final?: number | null;
+  cliente?: string | null;
+  tipo?: string | null;
+};
+
+type AgendaPanelProps = {
+  title: string;
+  items: AgendaItem[];
+  currencyFormatter: Intl.NumberFormat;
+  typeLabel: string;
+  loading: boolean;
+};
+
+const AgendaPanel = ({ title, items, currencyFormatter, typeLabel, loading }: AgendaPanelProps) => (
+  <div className="rounded-2xl border border-pastel-brown/10 bg-white p-6 shadow-sm">
+    <div className="flex items-center justify-between">
+      <div className="space-y-1">
+        <h3 className="text-base font-semibold text-neutral-900">{title}</h3>
+        <p className="text-xs text-neutral-500">Próximos {typeLabel}s en los próximos días.</p>
+      </div>
+    </div>
+    {loading ? (
+      <div className="mt-4 h-28 animate-pulse rounded-lg bg-pastel-blue/10" />
+    ) : !items.length ? (
+      <div className="mt-4 rounded-lg border border-dashed border-pastel-brown/20 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">
+        Sin {typeLabel}s próximos.
+      </div>
+    ) : (
+      <ul className="mt-4 space-y-3">
+        {items.map((item) => (
+          <li key={`${typeLabel}-${item.id ?? Math.random()}`} className="rounded-lg border border-pastel-brown/10 bg-pastel-cream/50 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-neutral-900">{item.cliente || 'Sin cliente'}</p>
+                <p className="text-xs text-neutral-500">{item.fecha_entrega ? formatDateLabel(item.fecha_entrega) : 'Fecha no definida'}</p>
+              </div>
+              <div className="text-sm font-semibold text-neutral-800">
+                {currencyFormatter.format(item.total_final ?? 0)}
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )}
   </div>
 );
 
