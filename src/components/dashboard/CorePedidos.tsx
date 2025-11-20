@@ -18,10 +18,28 @@ type DashboardFilters = {
   granularidad: 'day' | 'week' | 'month';
 };
 
-type DashboardResumen = {
+type DashboardKPIGlobal = {
   ingresosTotales: number;
+  totalOperaciones: number;
   totalPedidos: number;
+  totalEventos: number;
   ticketPromedio: number;
+  ticketPromedioPedidos: number;
+  ticketPromedioEventos: number;
+};
+
+type DashboardResumenes = {
+  global: DashboardKPIGlobal;
+  pedidos: {
+    ingresosTotales: number;
+    totalPedidos: number;
+    ticketPromedio: number;
+  };
+  eventos: {
+    ingresosTotales: number;
+    totalEventos: number;
+    ticketPromedio: number;
+  };
 };
 
 type RevenuePoint = {
@@ -65,21 +83,28 @@ type ProductoDetalle = {
 };
 
 type ClienteResumen = {
-  id_cliente: number;
+  id_cliente?: number;
+  id_perfil?: number;
   nombre: string;
   email: string | null;
   totalGastado: number;
   cantidadPedidos: number;
+  cantidadEventos?: number;
+  ingresosPedidos?: number;
+  ingresosEventos?: number;
 };
 
 type DashboardClientes = {
   top?: ClienteResumen[] | null;
+  topPedidos?: ClienteResumen[] | null;
+  topEventos?: ClienteResumen[] | null;
 };
 
 
 
 type DashboardProductos = {
   topTortas?: ProductoTop[] | null;
+  topBandejas?: ProductoTop[] | null;
   tablaProductos?: ProductoDetalle[] | null;
 };
 
@@ -88,16 +113,36 @@ type DashboardVentas = {
     granularity: 'day' | 'week' | 'month';
     series: RevenuePoint[];
   } | null;
+  tendenciaIngresosEventos?: {
+    granularity: 'day' | 'week' | 'month';
+    series: RevenuePoint[];
+  } | null;
+  tendenciaIngresosTotal?: {
+    granularity: 'day' | 'week' | 'month';
+    series: RevenuePoint[];
+  } | null;
   pedidosPorEstado?: PedidoEstado[] | null;
+  eventosPorEstado?: PedidoEstado[] | null;
   materiasPrimaMasCaras?: MateriaVariacion[] | null;
 };
 
 type DashboardResponse = {
   filtros: DashboardFilters;
-  resumen: DashboardResumen;
+  resumen: DashboardKPIGlobal;
+  resumenes?: DashboardResumenes | null;
+  comparativo?: {
+    actual: DashboardKPIGlobal;
+    previo: DashboardKPIGlobal;
+    variaciones: { ingresos: number | null; operaciones: number | null } | null;
+    rangoPrevio: { fechaInicio: string; fechaFin: string };
+  } | null;
   ventas?: DashboardVentas | null;
   productos?: DashboardProductos | null;
   clientes?: DashboardClientes | null;
+  agenda?: {
+    pedidos?: Array<{ id: number; fecha_entrega: string; total_final: number; cliente: string | null; tipo: string }>;
+    eventos?: Array<{ id: number; fecha_entrega: string; total_final: number; cliente: string | null; tipo: string }>;
+  } | null;
 };
 type QuickRange = {
   id: string;
@@ -224,17 +269,28 @@ const CorePedidos = () => {
 
   const filtros = data?.filtros;
   const resumen = data?.resumen;
+  const resumenes = data?.resumenes || null;
+  const comparativo = data?.comparativo || null;
   const ventas = data?.ventas;
   const productos = data?.productos;
   const clientes = data?.clientes;
-  const revenueSeries: RevenuePoint[] = ventas?.tendenciaIngresos?.series ?? [];
-  const revenueChartData = useMemo(() => {
-    if (!revenueSeries.length) return null;
+  const agenda = data?.agenda || null;
+
+  const revenueSeriesPedidos: RevenuePoint[] = ventas?.tendenciaIngresos?.series ?? [];
+  const revenueSeriesEventos: RevenuePoint[] = ventas?.tendenciaIngresosEventos?.series ?? [];
+  const revenueSeriesTotal: RevenuePoint[] = ventas?.tendenciaIngresosTotal?.series ?? [];
+
+  const toChartData = useCallback((series: RevenuePoint[]) => {
+    if (!series.length) return null;
     return {
-      labels: revenueSeries.map((point) => point.label || point.key),
-      values: revenueSeries.map((point) => Number(point.ingresos) || 0),
+      labels: series.map((point) => point.label || point.key),
+      values: series.map((point) => Number(point.ingresos) || 0),
     };
-  }, [revenueSeries]);
+  }, []);
+
+  const revenueChartPedidos = useMemo(() => toChartData(revenueSeriesPedidos), [revenueSeriesPedidos, toChartData]);
+  const revenueChartEventos = useMemo(() => toChartData(revenueSeriesEventos), [revenueSeriesEventos, toChartData]);
+  const revenueChartTotal = useMemo(() => toChartData(revenueSeriesTotal), [revenueSeriesTotal, toChartData]);
 
   const statusSeries: PedidoEstado[] = ventas?.pedidosPorEstado ?? [];
   const statusChartData = useMemo(() => {
@@ -246,6 +302,16 @@ const CorePedidos = () => {
     return { labels, values, colors };
   }, [statusSeries]);
 
+  const statusSeriesEventos: PedidoEstado[] = ventas?.eventosPorEstado ?? [];
+  const statusChartEventos = useMemo(() => {
+    if (!statusSeriesEventos.length) return null;
+    const labels = statusSeriesEventos.map((item) => item.estado || 'Sin estado');
+    const values = statusSeriesEventos.map((item) => Number(item.cantidad) || 0);
+    const palette = ['#8cc0de', '#f3ced6', '#a8e6cf', '#f9e79f', '#ff9f80', '#c3a6ff'];
+    const colors = labels.map((_, index) => palette[index % palette.length]);
+    return { labels, values, colors };
+  }, [statusSeriesEventos]);
+
   const materiaSeries: MateriaVariacion[] = ventas?.materiasPrimaMasCaras ?? [];
   const materiasChartData = useMemo(() => {
     if (!materiaSeries.length) return null;
@@ -255,12 +321,20 @@ const CorePedidos = () => {
   }, [materiaSeries]);
 
   const topTortasSeries: ProductoTop[] = productos?.topTortas ?? [];
+  const topBandejasSeries: ProductoTop[] = productos?.topBandejas ?? [];
   const topTortasChartData = useMemo(() => {
     if (!topTortasSeries.length) return null;
     const labels = topTortasSeries.map((item) => item.nombre || `Torta ${item.id_torta}`);
     const values = topTortasSeries.map((item) => Number(item.ingresos) || 0);
     return { labels, values };
   }, [topTortasSeries]);
+
+  const topBandejasChartData = useMemo(() => {
+    if (!topBandejasSeries.length) return null;
+    const labels = topBandejasSeries.map((item) => item.nombre || `Bandeja ${item.id_torta ?? item.id_bandeja ?? ''}`);
+    const values = topBandejasSeries.map((item) => Number(item.ingresos) || 0);
+    return { labels, values };
+  }, [topBandejasSeries]);
 
   const productosTabla: ProductoDetalle[] = productos?.tablaProductos ?? [];
   const clientesTop: ClienteResumen[] = clientes?.top ?? [];
@@ -279,8 +353,8 @@ const CorePedidos = () => {
   return (
     <section className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-4 py-10 md:px-8">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-neutral-900">Dashboard de ventas</h1>
-        <p className="text-sm text-neutral-600">Analiza el rendimiento de tus pedidos filtrando por rango de fechas.</p>
+        <h1 className="text-3xl font-semibold text-neutral-900">Dashboard de operaciones</h1>
+        <p className="text-sm text-neutral-600">Pedidos y eventos unificados: ingresos, estados y próximos compromisos.</p>
       </header>
 
       <div className="rounded-2xl border border-pastel-brown/20 bg-pastel-cream p-6 shadow-sm">
@@ -363,12 +437,12 @@ const CorePedidos = () => {
       </div>
 
       <section aria-labelledby="section-resumen" className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 id="section-resumen" className="text-xl font-semibold text-neutral-900">
               Seccion A - Resumen general
             </h2>
-            <p className="text-sm text-neutral-600">Indicadores claves de ventas para el periodo seleccionado.</p>
+            <p className="text-sm text-neutral-600">Indicadores clave de pedidos y eventos para el rango seleccionado.</p>
           </div>
           {filtros && (
             <span className="text-xs uppercase tracking-wide text-neutral-500">
@@ -377,7 +451,7 @@ const CorePedidos = () => {
           )}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard
             loading={isInitialLoading}
             icon={<TrendingUp className="text-pastel-blue" size={28} />}
@@ -388,18 +462,66 @@ const CorePedidos = () => {
           <KpiCard
             loading={isInitialLoading}
             icon={<ShoppingBag className="text-pastel-pink" size={28} />}
-            label="Total de pedidos"
-            value={resumen ? numberFormatter.format(resumen.totalPedidos) : '--'}
+            label="Operaciones totales"
+            value={resumen ? numberFormatter.format(resumen.totalOperaciones) : '--'}
             accent="bg-pastel-pink/20"
           />
           <KpiCard
             loading={isInitialLoading}
             icon={<Wallet className="text-pastel-green" size={28} />}
-            label="Ticket promedio"
+            label="Ingresos pedidos"
+            value={resumenes?.pedidos ? currencyFormatter.format(resumenes.pedidos.ingresosTotales) : '--'}
+            accent="bg-pastel-green/20"
+          />
+          <KpiCard
+            loading={isInitialLoading}
+            icon={<Wallet className="text-pastel-yellow" size={28} />}
+            label="Ingresos eventos"
+            value={resumenes?.eventos ? currencyFormatter.format(resumenes.eventos.ingresosTotales) : '--'}
+            accent="bg-pastel-yellow/40"
+          />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          <KpiCard
+            loading={isInitialLoading}
+            icon={<TrendingUp className="text-pastel-blue" size={28} />}
+            label="Ticket promedio global"
             value={resumen ? currencyFormatter.format(resumen.ticketPromedio) : '--'}
+            accent="bg-pastel-blue/10"
+          />
+          <KpiCard
+            loading={isInitialLoading}
+            icon={<ShoppingBag className="text-pastel-pink" size={28} />}
+            label="Ticket promedio pedidos"
+            value={resumenes?.pedidos ? currencyFormatter.format(resumenes.pedidos.ticketPromedio) : '--'}
+            accent="bg-pastel-pink/20"
+          />
+          <KpiCard
+            loading={isInitialLoading}
+            icon={<Wallet className="text-pastel-green" size={28} />}
+            label="Ticket promedio eventos"
+            value={resumenes?.eventos ? currencyFormatter.format(resumenes.eventos.ticketPromedio) : '--'}
             accent="bg-pastel-green/20"
           />
         </div>
+
+        {comparativo ? (
+          <div className="rounded-xl border border-pastel-brown/20 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-neutral-500">Comparativo</p>
+                <h3 className="text-sm text-neutral-700">
+                  Frente al rango previo ({formatDateLabel(comparativo.rangoPrevio.fechaInicio)} - {formatDateLabel(comparativo.rangoPrevio.fechaFin)})
+                </h3>
+              </div>
+              <div className="flex gap-3">
+                <VariationBadge label="Ingresos" value={comparativo.variaciones?.ingresos} />
+                <VariationBadge label="Operaciones" value={comparativo.variaciones?.operaciones} />
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section aria-labelledby="section-ventas" className="space-y-6">
@@ -408,23 +530,54 @@ const CorePedidos = () => {
             <h2 id="section-ventas" className="text-xl font-semibold text-neutral-900">
               Seccion B - Ventas y tendencias
             </h2>
-            <p className="text-sm text-neutral-600">Analiza como evolucionan las ventas y el estado operativo de los pedidos.</p>
+            <p className="text-sm text-neutral-600">Ingresos y estados de pedidos y eventos.</p>
           </div>
         </div>
 
         <div className="grid gap-4 xl:grid-cols-3">
           <ChartPanel
-            title="Evolucion de ingresos"
-            subtitle={ventas?.tendenciaIngresos?.granularity ? `Vista ${ventas.tendenciaIngresos.granularity}` : 'Sin granularidad sugerida'}
+            title="Ingresos combinados"
+            subtitle="Pedidos + Eventos"
             icon={<TrendingUp className="text-pastel-blue" size={20} />}
             loading={isInitialLoading}
             refreshing={isRefreshing}
-            empty={!isInitialLoading && (!revenueChartData || revenueChartData.labels.length === 0)}
+            empty={!isInitialLoading && (!revenueChartTotal || revenueChartTotal.labels.length === 0)}
             className="xl:col-span-2"
             emptyMessage="No hay datos de ingresos para el rango seleccionado."
           >
             <div className="h-72">
-              <LineChart data={revenueChartData} />
+              <LineChart data={revenueChartTotal} />
+            </div>
+          </ChartPanel>
+
+          <ChartPanel
+            title="Ingresos por pedidos"
+            subtitle={ventas?.tendenciaIngresos?.granularity ? `Vista ${ventas.tendenciaIngresos.granularity}` : 'Sin granularidad sugerida'}
+            icon={<TrendingUp className="text-pastel-blue" size={20} />}
+            loading={isInitialLoading}
+            refreshing={isRefreshing}
+            empty={!isInitialLoading && (!revenueChartPedidos || revenueChartPedidos.labels.length === 0)}
+            emptyMessage="No hay datos de ingresos de pedidos."
+          >
+            <div className="h-72">
+              <LineChart data={revenueChartPedidos} />
+            </div>
+          </ChartPanel>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-3">
+          <ChartPanel
+            title="Ingresos por eventos"
+            subtitle={ventas?.tendenciaIngresosEventos?.granularity ? `Vista ${ventas.tendenciaIngresosEventos.granularity}` : 'Sin granularidad sugerida'}
+            icon={<TrendingUp className="text-pastel-blue" size={20} />}
+            loading={isInitialLoading}
+            refreshing={isRefreshing}
+            empty={!isInitialLoading && (!revenueChartEventos || revenueChartEventos.labels.length === 0)}
+            emptyMessage="No hay datos de ingresos de eventos."
+            className="xl:col-span-2"
+          >
+            <div className="h-72">
+              <LineChart data={revenueChartEventos} />
             </div>
           </ChartPanel>
 
@@ -443,19 +596,36 @@ const CorePedidos = () => {
           </ChartPanel>
         </div>
 
-        <ChartPanel
-          title="Materias primas con mayor aumento"
-          subtitle="Variacion porcentual"
-          icon={<BarChart3 className="text-pastel-yellow" size={20} />}
-          loading={isInitialLoading}
-          refreshing={isRefreshing}
-          empty={!isInitialLoading && (!materiasChartData || materiasChartData.labels.length === 0)}
-          emptyMessage="No se registraron aumentos en el periodo seleccionado."
-        >
-          <div className="h-72">
-            <HorizontalBarChart data={materiasChartData} />
-          </div>
-        </ChartPanel>
+        <div className="grid gap-4 xl:grid-cols-3">
+          <ChartPanel
+            title="Eventos por estado"
+            subtitle="Distribucion actual"
+            icon={<PieChart className="text-pastel-pink" size={20} />}
+            loading={isInitialLoading}
+            refreshing={isRefreshing}
+            empty={!isInitialLoading && (!statusChartEventos || statusChartEventos.labels.length === 0)}
+            emptyMessage="No hay eventos en los estados consultados."
+          >
+            <div className="h-72">
+              <DonutChart data={statusChartEventos} />
+            </div>
+          </ChartPanel>
+
+          <ChartPanel
+            title="Materias primas con mayor aumento"
+            subtitle="Variacion porcentual"
+            icon={<BarChart3 className="text-pastel-yellow" size={20} />}
+            loading={isInitialLoading}
+            refreshing={isRefreshing}
+            empty={!isInitialLoading && (!materiasChartData || materiasChartData.labels.length === 0)}
+            emptyMessage="No se registraron aumentos en el periodo seleccionado."
+            className="xl:col-span-2"
+          >
+            <div className="h-72">
+              <HorizontalBarChart data={materiasChartData} />
+            </div>
+          </ChartPanel>
+        </div>
       </section>
       <section aria-labelledby="section-productos" className="space-y-6">
         <div className="flex items-center justify-between">
@@ -467,16 +637,15 @@ const CorePedidos = () => {
           </div>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-5">
+        <div className="grid gap-4 xl:grid-cols-2">
           <ChartPanel
             title="Top 10 tortas por ingresos"
-            subtitle="Ingresos acumulados"
+            subtitle="Pedidos + Eventos"
             icon={<BarChart3 className="text-pastel-blue" size={20} />}
             loading={isInitialLoading}
             refreshing={isRefreshing}
             empty={!isInitialLoading && (!topTortasChartData || topTortasChartData.labels.length === 0)}
             emptyMessage="No se registran ventas de tortas en el periodo."
-            className="xl:col-span-2"
           >
             <div className="h-72">
               <HorizontalBarChart data={topTortasChartData} />
@@ -484,22 +653,35 @@ const CorePedidos = () => {
           </ChartPanel>
 
           <ChartPanel
-            title="Detalle de productos"
-            subtitle="Ingresos, cantidades y promedios"
-            icon={<TableProperties className="text-pastel-brown" size={20} />}
+            title="Top bandejas por ingresos"
+            subtitle="Pedidos + Eventos"
+            icon={<BarChart3 className="text-pastel-blue" size={20} />}
             loading={isInitialLoading}
             refreshing={isRefreshing}
-            empty={!isInitialLoading && productosTabla.length === 0}
-            emptyMessage="No hay datos de productos para mostrar."
-            className="xl:col-span-3"
+            empty={!isInitialLoading && (!topBandejasChartData || topBandejasChartData.labels.length === 0)}
+            emptyMessage="No se registran ventas de bandejas en el periodo."
           >
-            <ProductsTable
-              items={productosTabla}
-              currencyFormatter={currencyFormatter}
-              numberFormatter={numberFormatter}
-            />
+            <div className="h-72">
+              <HorizontalBarChart data={topBandejasChartData} />
+            </div>
           </ChartPanel>
         </div>
+
+        <ChartPanel
+          title="Detalle de productos"
+          subtitle="Ingresos, cantidades y promedios"
+          icon={<TableProperties className="text-pastel-brown" size={20} />}
+          loading={isInitialLoading}
+          refreshing={isRefreshing}
+          empty={!isInitialLoading && productosTabla.length === 0}
+          emptyMessage="No hay datos de productos para mostrar."
+        >
+          <ProductsTable
+            items={productosTabla}
+            currencyFormatter={currencyFormatter}
+            numberFormatter={numberFormatter}
+          />
+        </ChartPanel>
       </section>
 
       <section aria-labelledby="section-clientes" className="space-y-6">
@@ -916,19 +1098,32 @@ const ClientsTable = ({ items, currencyFormatter, numberFormatter }: ClientsTabl
           <th className="px-3 py-2 text-left font-semibold">Cliente</th>
           <th className="px-3 py-2 text-left font-semibold">Email</th>
           <th className="px-3 py-2 text-right font-semibold">Total gastado</th>
+          <th className="px-3 py-2 text-right font-semibold">Ingresos pedidos</th>
+          <th className="px-3 py-2 text-right font-semibold">Ingresos eventos</th>
           <th className="px-3 py-2 text-right font-semibold">Pedidos</th>
+          <th className="px-3 py-2 text-right font-semibold">Eventos</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-pastel-brown/10">
-        {items.map((cliente) => (
-          <tr key={cliente.id_cliente} className="odd:bg-pastel-cream/30">
-            <td className="px-3 py-2 text-neutral-600">{cliente.rank}</td>
-            <td className="px-3 py-2 font-medium text-neutral-800">{cliente.nombre}</td>
-            <td className="px-3 py-2 text-neutral-600">{cliente.email || "Sin email"}</td>
-            <td className="px-3 py-2 text-right text-neutral-700">{currencyFormatter.format(cliente.totalGastado)}</td>
-            <td className="px-3 py-2 text-right text-neutral-700">{numberFormatter.format(cliente.cantidadPedidos)}</td>
-          </tr>
-        ))}
+        {items.map((cliente) => {
+          const key = cliente.id_cliente ?? cliente.id_perfil ?? `${cliente.nombre}-${cliente.rank}`;
+          return (
+            <tr key={key} className="odd:bg-pastel-cream/30">
+              <td className="px-3 py-2 text-neutral-600">{cliente.rank}</td>
+              <td className="px-3 py-2 font-medium text-neutral-800">{cliente.nombre}</td>
+              <td className="px-3 py-2 text-neutral-600">{cliente.email || 'Sin email'}</td>
+              <td className="px-3 py-2 text-right text-neutral-700">{currencyFormatter.format(cliente.totalGastado)}</td>
+              <td className="px-3 py-2 text-right text-neutral-700">
+                {currencyFormatter.format(cliente.ingresosPedidos ?? cliente.totalGastado ?? 0)}
+              </td>
+              <td className="px-3 py-2 text-right text-neutral-700">
+                {currencyFormatter.format(cliente.ingresosEventos ?? 0)}
+              </td>
+              <td className="px-3 py-2 text-right text-neutral-700">{numberFormatter.format(cliente.cantidadPedidos ?? 0)}</td>
+              <td className="px-3 py-2 text-right text-neutral-700">{numberFormatter.format(cliente.cantidadEventos ?? 0)}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   </div>

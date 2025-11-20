@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import FormAuditoria from '@/components/forms/FormAuditoria';
 import FormHistorialMateriaPrima from '@/components/forms/FormHistorialMateriaPrima';
 import { useAuditoriaData } from '@/hooks/useAuditoriaData';
-import { Button } from '@/components/ui/button';
 import ModalError from '@/components/modals/error';
 
 export default function AuditoriaPage() {
