@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -9,141 +9,19 @@ import { BarChart3, CalendarRange, PieChart, RefreshCw, ShoppingBag, TableProper
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  ClienteResumen,
+  DashboardResponse,
+  MateriaVariacion,
+  PedidoEstado,
+  ProductoDetalle,
+  ProductoTop,
+  RevenuePoint,
+} from '@/interfaces/dashboard';
 import { api } from '@/lib/api';
 import { debugFetch } from '@/lib/debugFetch';
+import { exportDashboardPdf } from '@/lib/exportDashboardPdf';
 
-type DashboardFilters = {
-  fechaInicio: string;
-  fechaFin: string;
-  granularidad: 'day' | 'week' | 'month';
-};
-
-type DashboardKPIGlobal = {
-  ingresosTotales: number;
-  totalOperaciones: number;
-  totalPedidos: number;
-  totalEventos: number;
-  ticketPromedio: number;
-  ticketPromedioPedidos: number;
-  ticketPromedioEventos: number;
-};
-
-type DashboardResumenes = {
-  global: DashboardKPIGlobal;
-  pedidos: {
-    ingresosTotales: number;
-    totalPedidos: number;
-    ticketPromedio: number;
-  };
-  eventos: {
-    ingresosTotales: number;
-    totalEventos: number;
-    ticketPromedio: number;
-  };
-};
-
-type RevenuePoint = {
-  key: string;
-  label: string;
-  periodStart: string;
-  ingresos: number;
-  pedidos: number;
-};
-
-type PedidoEstado = {
-  estado: string;
-  cantidad: number;
-};
-
-type MateriaVariacion = {
-  id_materiaprima: number;
-  nombre: string;
-  variacionPorcentual: number;
-  precioInicial: number;
-  precioFinal: number;
-  fechaInicial: string;
-  fechaFinal: string;
-};
-
-
-type ProductoTop = {
-  id_torta: number;
-  nombre: string;
-  ingresos: number;
-  cantidad: number;
-};
-
-type ProductoDetalle = {
-  id: number;
-  tipo: 'torta' | 'bandeja';
-  nombre: string;
-  cantidadVendida: number;
-  ingresosTotales: number;
-  precioPromedio: number;
-};
-
-type ClienteResumen = {
-  id_cliente?: number;
-  id_perfil?: number;
-  nombre: string;
-  email: string | null;
-  totalGastado: number;
-  cantidadPedidos: number;
-  cantidadEventos?: number;
-  ingresosPedidos?: number;
-  ingresosEventos?: number;
-};
-
-type DashboardClientes = {
-  top?: ClienteResumen[] | null;
-  topPedidos?: ClienteResumen[] | null;
-  topEventos?: ClienteResumen[] | null;
-};
-
-
-
-type DashboardProductos = {
-  topTortas?: ProductoTop[] | null;
-  topBandejas?: ProductoTop[] | null;
-  tablaProductos?: ProductoDetalle[] | null;
-};
-
-type DashboardVentas = {
-  tendenciaIngresos?: {
-    granularity: 'day' | 'week' | 'month';
-    series: RevenuePoint[];
-  } | null;
-  tendenciaIngresosEventos?: {
-    granularity: 'day' | 'week' | 'month';
-    series: RevenuePoint[];
-  } | null;
-  tendenciaIngresosTotal?: {
-    granularity: 'day' | 'week' | 'month';
-    series: RevenuePoint[];
-  } | null;
-  pedidosPorEstado?: PedidoEstado[] | null;
-  eventosPorEstado?: PedidoEstado[] | null;
-  materiasPrimaMasCaras?: MateriaVariacion[] | null;
-};
-
-type DashboardResponse = {
-  filtros: DashboardFilters;
-  resumen: DashboardKPIGlobal;
-  resumenes?: DashboardResumenes | null;
-  comparativo?: {
-    actual: DashboardKPIGlobal;
-    previo: DashboardKPIGlobal;
-    variaciones: { ingresos: number | null; operaciones: number | null } | null;
-    rangoPrevio: { fechaInicio: string; fechaFin: string };
-  } | null;
-  ventas?: DashboardVentas | null;
-  productos?: DashboardProductos | null;
-  clientes?: DashboardClientes | null;
-  agenda?: {
-    pedidos?: Array<{ id: number; fecha_entrega: string; total_final: number; cliente: string | null; tipo: string }>;
-    eventos?: Array<{ id: number; fecha_entrega: string; total_final: number; cliente: string | null; tipo: string }>;
-  } | null;
-};
 type QuickRange = {
   id: string;
   label: string;
@@ -157,6 +35,13 @@ const QUICK_RANGES: QuickRange[] = [
   { id: '30', label: 'Ultimos 30 dias', days: 30 },
   { id: '90', label: 'Ultimos 90 dias', days: 90 },
 ];
+
+const EMPTY_REVENUE: RevenuePoint[] = [];
+const EMPTY_ESTADOS: PedidoEstado[] = [];
+const EMPTY_MATERIAS: MateriaVariacion[] = [];
+const EMPTY_PRODUCTO_TOP: ProductoTop[] = [];
+const EMPTY_PRODUCTO_DETALLE: ProductoDetalle[] = [];
+const EMPTY_CLIENTES: ClienteResumen[] = [];
 
 const DASHBOARD_ENDPOINT = `${api}/dashboard`;
 
@@ -251,11 +136,6 @@ const CorePedidos = () => {
     fetchDashboard({ start: startDate, end: endDate });
   }, [fetchDashboard, startDate, endDate]);
 
-  const handleApplyFilters = () => {
-    setActivePreset('custom');
-    fetchDashboard({ start: startDate, end: endDate }, { silent: Boolean(data) });
-  };
-
   const handlePresetClick = (preset: QuickRange) => {
     const end = new Date();
     const start = addDays(end, -(preset.days - 1));
@@ -267,6 +147,29 @@ const CorePedidos = () => {
     fetchDashboard({ start: formattedStart, end: formattedEnd }, { silent: Boolean(data) });
   };
 
+  const ingresosTotalCanvas = useRef<HTMLCanvasElement | null>(null);
+  const ingresosPedidosCanvas = useRef<HTMLCanvasElement | null>(null);
+  const ingresosEventosCanvas = useRef<HTMLCanvasElement | null>(null);
+  const pedidosEstadoCanvas = useRef<HTMLCanvasElement | null>(null);
+  const eventosEstadoCanvas = useRef<HTMLCanvasElement | null>(null);
+
+  const handleDownload = useCallback(() => {
+    if (!data?.filtros) return;
+
+    const charts: Partial<Record<'ingresosTotal' | 'ingresosPedidos' | 'ingresosEventos' | 'pedidosEstado' | 'eventosEstado', string>> = {};
+    if (ingresosTotalCanvas.current) charts.ingresosTotal = ingresosTotalCanvas.current.toDataURL('image/png', 1);
+    if (ingresosPedidosCanvas.current) charts.ingresosPedidos = ingresosPedidosCanvas.current.toDataURL('image/png', 1);
+    if (ingresosEventosCanvas.current) charts.ingresosEventos = ingresosEventosCanvas.current.toDataURL('image/png', 1);
+    if (pedidosEstadoCanvas.current) charts.pedidosEstado = pedidosEstadoCanvas.current.toDataURL('image/png', 1);
+    if (eventosEstadoCanvas.current) charts.eventosEstado = eventosEstadoCanvas.current.toDataURL('image/png', 1);
+
+    exportDashboardPdf(data as DashboardResponse, {
+      startLabel: formatDateLabel(data.filtros.fechaInicio),
+      endLabel: formatDateLabel(data.filtros.fechaFin),
+      charts,
+    });
+  }, [data]);
+
   const filtros = data?.filtros;
   const resumen = data?.resumen;
   const resumenes = data?.resumenes || null;
@@ -276,9 +179,9 @@ const CorePedidos = () => {
   const clientes = data?.clientes;
   const agenda = data?.agenda || null;
 
-  const revenueSeriesPedidos: RevenuePoint[] = ventas?.tendenciaIngresos?.series ?? [];
-  const revenueSeriesEventos: RevenuePoint[] = ventas?.tendenciaIngresosEventos?.series ?? [];
-  const revenueSeriesTotal: RevenuePoint[] = ventas?.tendenciaIngresosTotal?.series ?? [];
+  const revenueSeriesPedidos: RevenuePoint[] = ventas?.tendenciaIngresos?.series ?? EMPTY_REVENUE;
+  const revenueSeriesEventos: RevenuePoint[] = ventas?.tendenciaIngresosEventos?.series ?? EMPTY_REVENUE;
+  const revenueSeriesTotal: RevenuePoint[] = ventas?.tendenciaIngresosTotal?.series ?? EMPTY_REVENUE;
 
   const toChartData = useCallback((series: RevenuePoint[]) => {
     if (!series.length) return null;
@@ -292,7 +195,7 @@ const CorePedidos = () => {
   const revenueChartEventos = useMemo(() => toChartData(revenueSeriesEventos), [revenueSeriesEventos, toChartData]);
   const revenueChartTotal = useMemo(() => toChartData(revenueSeriesTotal), [revenueSeriesTotal, toChartData]);
 
-  const statusSeries: PedidoEstado[] = ventas?.pedidosPorEstado ?? [];
+  const statusSeries: PedidoEstado[] = ventas?.pedidosPorEstado ?? EMPTY_ESTADOS;
   const statusChartData = useMemo(() => {
     if (!statusSeries.length) return null;
     const labels = statusSeries.map((item) => item.estado || 'Sin estado');
@@ -302,7 +205,7 @@ const CorePedidos = () => {
     return { labels, values, colors };
   }, [statusSeries]);
 
-  const statusSeriesEventos: PedidoEstado[] = ventas?.eventosPorEstado ?? [];
+  const statusSeriesEventos: PedidoEstado[] = ventas?.eventosPorEstado ?? EMPTY_ESTADOS;
   const statusChartEventos = useMemo(() => {
     if (!statusSeriesEventos.length) return null;
     const labels = statusSeriesEventos.map((item) => item.estado || 'Sin estado');
@@ -312,7 +215,7 @@ const CorePedidos = () => {
     return { labels, values, colors };
   }, [statusSeriesEventos]);
 
-  const materiaSeries: MateriaVariacion[] = ventas?.materiasPrimaMasCaras ?? [];
+  const materiaSeries: MateriaVariacion[] = ventas?.materiasPrimaMasCaras ?? EMPTY_MATERIAS;
   const materiasChartData = useMemo(() => {
     if (!materiaSeries.length) return null;
     const labels = materiaSeries.map((item) => item.nombre || `Materia ${item.id_materiaprima}`);
@@ -320,8 +223,8 @@ const CorePedidos = () => {
     return { labels, values };
   }, [materiaSeries]);
 
-  const topTortasSeries: ProductoTop[] = productos?.topTortas ?? [];
-  const topBandejasSeries: ProductoTop[] = productos?.topBandejas ?? [];
+  const topTortasSeries: ProductoTop[] = productos?.topTortas ?? EMPTY_PRODUCTO_TOP;
+  const topBandejasSeries: ProductoTop[] = productos?.topBandejas ?? EMPTY_PRODUCTO_TOP;
   const topTortasChartData = useMemo(() => {
     if (!topTortasSeries.length) return null;
     const labels = topTortasSeries.map((item) => item.nombre || `Torta ${item.id_torta}`);
@@ -336,8 +239,8 @@ const CorePedidos = () => {
     return { labels, values };
   }, [topBandejasSeries]);
 
-  const productosTabla: ProductoDetalle[] = productos?.tablaProductos ?? [];
-  const clientesTop: ClienteResumen[] = clientes?.top ?? [];
+  const productosTabla: ProductoDetalle[] = productos?.tablaProductos ?? EMPTY_PRODUCTO_DETALLE;
+  const clientesTop: ClienteResumen[] = clientes?.top ?? EMPTY_CLIENTES;
   const clientesTablaData = useMemo<Array<{ rank: number } & ClienteResumen>>(() => {
     if (!clientesTop.length) return [];
     return clientesTop.map((cliente, index) => ({
@@ -353,8 +256,8 @@ const CorePedidos = () => {
   return (
     <section className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-4 py-10 md:px-8">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-neutral-900">Dashboard de operaciones</h1>
-        <p className="text-sm text-neutral-600">Pedidos y eventos unificados: ingresos, estados y próximos compromisos.</p>
+        <h1 className="text-3xl font-semibold text-neutral-900">Reportes de operaciones</h1>
+        <p className="text-sm text-neutral-600">Pedidos y eventos unificados: ingresos, estados y prximos compromisos.</p>
       </header>
 
       <div className="rounded-2xl border border-pastel-brown/20 bg-pastel-cream p-6 shadow-sm">
@@ -405,11 +308,11 @@ const CorePedidos = () => {
             </Button>
             <Button
               type="button"
-              onClick={handleApplyFilters}
-              disabled={loading || refreshing}
+              onClick={handleDownload}
+              disabled={loading || refreshing || !data}
               className="bg-pastel-blue text-white hover:bg-pastel-blue/90"
             >
-              Aplicar filtros
+              Descargar PDF
             </Button>
           </div>
         </div>
@@ -546,7 +449,7 @@ const CorePedidos = () => {
             emptyMessage="No hay datos de ingresos para el rango seleccionado."
           >
             <div className="h-72">
-              <LineChart data={revenueChartTotal} />
+              <LineChart data={revenueChartTotal} onReady={(canvas) => { ingresosTotalCanvas.current = canvas; }} />
             </div>
           </ChartPanel>
 
@@ -560,7 +463,7 @@ const CorePedidos = () => {
             emptyMessage="No hay datos de ingresos de pedidos."
           >
             <div className="h-72">
-              <LineChart data={revenueChartPedidos} />
+              <LineChart data={revenueChartPedidos} onReady={(canvas) => { ingresosPedidosCanvas.current = canvas; }} />
             </div>
           </ChartPanel>
         </div>
@@ -577,7 +480,7 @@ const CorePedidos = () => {
             className="xl:col-span-2"
           >
             <div className="h-72">
-              <LineChart data={revenueChartEventos} />
+              <LineChart data={revenueChartEventos} onReady={(canvas) => { ingresosEventosCanvas.current = canvas; }} />
             </div>
           </ChartPanel>
 
@@ -591,7 +494,7 @@ const CorePedidos = () => {
             emptyMessage="No hay pedidos en los estados consultados."
           >
             <div className="h-72">
-              <DonutChart data={statusChartData} />
+              <DonutChart data={statusChartData} onReady={(canvas) => { pedidosEstadoCanvas.current = canvas; }} />
             </div>
           </ChartPanel>
         </div>
@@ -607,7 +510,7 @@ const CorePedidos = () => {
             emptyMessage="No hay eventos en los estados consultados."
           >
             <div className="h-72">
-              <DonutChart data={statusChartEventos} />
+              <DonutChart data={statusChartEventos} onReady={(canvas) => { eventosEstadoCanvas.current = canvas; }} />
             </div>
           </ChartPanel>
 
@@ -717,20 +620,20 @@ const CorePedidos = () => {
             <h2 id="section-agenda" className="text-xl font-semibold text-neutral-900">
               Seccion E - Agenda proxima
             </h2>
-            <p className="text-sm text-neutral-600">Próximas entregas de pedidos y eventos.</p>
+            <p className="text-sm text-neutral-600">Prximas entregas de pedidos y eventos.</p>
           </div>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <AgendaPanel
-            title="Pedidos próximos"
+            title="Pedidos prximos"
             items={agenda?.pedidos ?? []}
             currencyFormatter={currencyFormatter}
             typeLabel="pedido"
             loading={isInitialLoading}
           />
           <AgendaPanel
-            title="Eventos próximos"
+            title="Eventos prximos"
             items={agenda?.eventos ?? []}
             currencyFormatter={currencyFormatter}
             typeLabel="evento"
@@ -866,9 +769,10 @@ const ProductsTable = ({ items, currencyFormatter, numberFormatter }: ProductsTa
 
 type LineChartProps = {
   data: { labels: string[]; values: number[] } | null;
+  onReady?: (canvas: HTMLCanvasElement | null) => void;
 };
 
-const LineChart = ({ data }: LineChartProps) => {
+const LineChart = ({ data, onReady }: LineChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
 
@@ -891,6 +795,7 @@ const LineChart = ({ data }: LineChartProps) => {
       chartRef.current.data.labels = data.labels;
       chartRef.current.data.datasets[0].data = data.values;
       chartRef.current.update();
+      onReady?.(canvasRef.current);
       return;
     }
 
@@ -942,11 +847,13 @@ const LineChart = ({ data }: LineChartProps) => {
       },
     });
 
+    onReady?.(canvasRef.current);
+
     return () => {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [data]);
+  }, [data, onReady]);
 
   useEffect(() => () => {
     chartRef.current?.destroy();
@@ -964,9 +871,10 @@ type DonutChartData = {
 
 type DonutChartProps = {
   data: DonutChartData | null;
+  onReady?: (canvas: HTMLCanvasElement | null) => void;
 };
 
-const DonutChart = ({ data }: DonutChartProps) => {
+const DonutChart = ({ data, onReady }: DonutChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
 
@@ -990,6 +898,7 @@ const DonutChart = ({ data }: DonutChartProps) => {
       chartRef.current.data.datasets[0].data = data.values;
       chartRef.current.data.datasets[0].backgroundColor = data.colors;
       chartRef.current.update();
+      onReady?.(canvasRef.current);
       return;
     }
 
@@ -1023,11 +932,13 @@ const DonutChart = ({ data }: DonutChartProps) => {
       },
     });
 
+    onReady?.(canvasRef.current);
+
     return () => {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [data]);
+  }, [data, onReady]);
 
   useEffect(() => () => {
     chartRef.current?.destroy();
@@ -1208,14 +1119,14 @@ const AgendaPanel = ({ title, items, currencyFormatter, typeLabel, loading }: Ag
     <div className="flex items-center justify-between">
       <div className="space-y-1">
         <h3 className="text-base font-semibold text-neutral-900">{title}</h3>
-        <p className="text-xs text-neutral-500">Próximos {typeLabel}s en los próximos días.</p>
+        <p className="text-xs text-neutral-500">Prximos {typeLabel}s en los prximos das.</p>
       </div>
     </div>
     {loading ? (
       <div className="mt-4 h-28 animate-pulse rounded-lg bg-pastel-blue/10" />
     ) : !items.length ? (
       <div className="mt-4 rounded-lg border border-dashed border-pastel-brown/20 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">
-        Sin {typeLabel}s próximos.
+        Sin {typeLabel}s prximos.
       </div>
     ) : (
       <ul className="mt-4 space-y-3">

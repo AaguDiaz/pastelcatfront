@@ -196,7 +196,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <Calendar size={16} />
                   </div>
                   <Link href="/dashboard" className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
-                    <span>📊 Dashboard</span>
+                    <span>📊 Reportes</span>
                     <LayoutDashboard size={16} />
                   </Link>
                   <Link href="/auditoria" className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
@@ -237,7 +237,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   />
                 </button>
               )}
-              <Link href={isAuthenticated ? '/dashboard' : '/'} className="text-black text-2xl font-bold">
+              <Link href={isAuthenticated ? '/home' : '/'} className="text-black text-2xl font-bold">
                 Pastel Cat
               </Link>
             </div>
