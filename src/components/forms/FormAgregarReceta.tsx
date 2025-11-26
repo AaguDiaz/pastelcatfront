@@ -139,6 +139,14 @@ const FormAgregarReceta = (props: FormAgregarRecetaProps) => {
       return;
     }
 
+    const tortaSeleccionadaObj = tortas.find(
+      t => t.nombre === tortaSeleccionada || String(t.id_torta) === tortaSeleccionada
+    );
+    if (!tortaSeleccionadaObj) {
+      setModalError({ mostrar: true, mensaje: 'La torta seleccionada no es valida.' });
+      return;
+    }
+
     const ingredientesFormateados = ingredientesAgregados.map(item => ({
       id_materiaprima: item.id,
       cantidad: parseFloat(item.cantidad),
@@ -159,7 +167,7 @@ const FormAgregarReceta = (props: FormAgregarRecetaProps) => {
             return;
         }
         const payload = {
-            id_torta: parseInt(tortaSeleccionada), 
+            id_torta: tortaSeleccionadaObj.id_torta, 
             porciones: parseInt(porciones), 
             ingredientes: ingredientesFormateados 
         };
