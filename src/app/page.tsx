@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { LucideIcon } from 'lucide-react';
 import {
   BarChart3,
   Bell,
@@ -15,11 +16,19 @@ import {
   Wheat,
 } from 'lucide-react';
 
-const shortcuts = [
+type Shortcut = {
+  title: string;
+  description: string;
+  href: string;
+  icon: LucideIcon;
+  disabled?: boolean;
+};
+
+const shortcuts: Shortcut[] = [
   { title: 'Pedidos', description: 'Organiza entregas y estados.', href: '/pedido', icon: ClipboardList },
   { title: 'Eventos', description: 'Coordina catering y montajes.', href: '/evento', icon: PartyPopper },
   { title: 'Calendario', description: 'Ve tu agenda semanal.', href: '/calendario', icon: CalendarClock },
-  { title: 'Notificaciones', description: 'Alertas y novedades del equipo.', href: '#', icon: Bell, disabled: true },
+  { title: 'Notificaciones', description: 'Alertas y novedades del equipo.', href: '/notificaciones', icon: Bell },
   { title: 'Tortas', description: 'Recetas y decoracion especial.', href: '/torta', icon: Cake },
   { title: 'Bandejas', description: 'Controla stock y armado.', href: '/bandeja', icon: Boxes },
   { title: 'Recetas', description: 'Versiona y escala preparaciones.', href: '/recetas', icon: BookOpenCheck },
