@@ -9,10 +9,6 @@ const PageReceta = () => {
   // Llama al hook UNA SOLA VEZ en el componente padre.
   const recetaData = useRecetaData();
 
-  if (recetaData.loading) {
-    return <div className="p-6 text-center">Cargando datos...</div>;
-  }
-
   return (
     <main className="p-6">
       <div className="flex flex-col gap-6">
