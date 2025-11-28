@@ -181,13 +181,31 @@ export default function MateriasPrimas() {
       <div className="bg-pastel-cream shadow-2xl rounded-2xl p-6 mb-6">
         <h2 className="text-2xl font-semibold mb-4">{isEditing ? 'Editar Materia Prima':'Agregar Materia Prima'}</h2>
         <div className="grid grid-cols-5 gap-4 mb-4">
-          <Input placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
-          <Input placeholder="Unidad" value={unidad} onChange={(e) => setUnidad(e.target.value)} />
-          <Input placeholder="Cantidad" type="number" value={cantidad} onChange={e => setCantidad(e.target.value)} step='0.01' />
-          <Input placeholder="Precio Total" type="number" value={precio} onChange={e => setPrecio(e.target.value)} step='0.01'/>
-          <Button onClick={agregarFila} className="bg-pastel-blue hover:scale-105 transition-transform">{isEditing ? 'Actualizar':'Agregar'}</Button>
+          <div>
+            <label> Nombre </label>
+            <Input placeholder="Ej: Harina" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+          </div>
+          
+          <div>
+            <label> Unidad </label>
+            <Input placeholder="Ej: kg" value={unidad} onChange={(e) => setUnidad(e.target.value)} />
+          </div>
+          <div>
+            <label> Cantidad </label>
+            <Input placeholder="Cantidad" type="number" value={cantidad} onChange={e => setCantidad(e.target.value)} step='0.01' />
+          </div>
+          <div>
+            <label> Precio Total </label>
+            <Input placeholder="Precio Total" type="number" value={precio} onChange={e => setPrecio(e.target.value)} step='0.01'/>
+          </div>
+
+          <Button onClick={agregarFila} className="bg-pastel-blue hover:scale-105 transition-transform m-6">{isEditing ? 'Actualizar':'Agregar'}</Button>
         </div>
-        <Input placeholder="Buscar por nombre..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div>
+          <label> Buscar materia prima</label>
+          <Input placeholder="Buscar por nombre..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        
       </div>
 
       <div className="bg-pastel-cream shadow-2xl rounded-2xl p-4">
@@ -218,10 +236,10 @@ export default function MateriasPrimas() {
                   <td>${row.precio.toFixed(2)}</td>
                   <td className="flex gap-2">
                     <Button onClick={()=> editarFila(row)} className="bg-pastel-blue hover:scale-105 transition-transform">
-                      <Pencil size={16} />
+                      <Pencil size={16} /> Editar
                     </Button>
                     <Button onClick={() => setModalEliminar({ isOpen: true, materia: row }) } className="bg-pastel-red hover:scale-105 transition-transform">
-                      <Trash2 size={16} />
+                      <Trash2 size={16} /> Eliminar
                     </Button>
                   </td>
                 </motion.tr>
