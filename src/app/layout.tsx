@@ -41,16 +41,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, [checkAuth]);
 
-  const loadUnreadNotifications = useCallback(() => {
+  const loadUnreadNotifications = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setUnreadNotifications(0);
+      return;
+    }
+
     try {
-      const stored = localStorage.getItem('pastelcat-mock-notifications');
-      if (!stored) {
+      const res = await fetch(`${api}/notificaciones?unread=true&pageSize=1`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
         setUnreadNotifications(0);
         return;
       }
-      const parsed = JSON.parse(stored) as { unread?: boolean }[];
-      const count = parsed.filter((item) => item?.unread).length;
-      setUnreadNotifications(count);
+
+      const data = await res.json();
+      setUnreadNotifications(Number(data?.unreadCount || 0));
     } catch {
       setUnreadNotifications(0);
     }
