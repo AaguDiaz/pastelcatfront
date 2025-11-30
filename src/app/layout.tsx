@@ -17,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [openPasteleria, setOpenPasteleria] = useState(false);
   const [openCatering, setOpenCatering] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const checkAuth = useCallback(() => {
     const token = localStorage.getItem('token');
@@ -39,6 +40,45 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       clearInterval(interval);
     };
   }, [checkAuth]);
+
+  const loadUnreadNotifications = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setUnreadNotifications(0);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${api}/notificaciones?unread=true&pageSize=1`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        setUnreadNotifications(0);
+        return;
+      }
+
+      const data = await res.json();
+      setUnreadNotifications(Number(data?.unreadCount || 0));
+    } catch {
+      setUnreadNotifications(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUnreadNotifications();
+
+    const handleNotificationsUpdate = () => loadUnreadNotifications();
+    window.addEventListener('notifications-updated', handleNotificationsUpdate);
+    window.addEventListener('storage', handleNotificationsUpdate);
+
+    return () => {
+      window.removeEventListener('notifications-updated', handleNotificationsUpdate);
+      window.removeEventListener('storage', handleNotificationsUpdate);
+    };
+  }, [loadUnreadNotifications]);
 
   const handleLogout = async () => {
     const token = localStorage.getItem('token');
@@ -187,10 +227,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </AnimatePresence>
 
                 <div className="mt-4 space-y-2">
-                  <div className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
-                    <span>🔔 Notificaciones</span>
+                  <Link
+                    href="/notificaciones"
+                    className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center"
+                    onClick={closeSidebar}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>🔔 Notificaciones</span>
+                      {unreadNotifications > 0 && (
+                        <span className="rounded-full bg-pastel-red px-2 py-0.5 text-[11px] font-bold leading-none text-white shadow">
+                          {unreadNotifications}
+                        </span>
+                      )}
+                    </div>
                     <Bell size={16} />
-                  </div>
+                  </Link>
                   <div className="hover:scale-105 transition-transform cursor-pointer flex justify-between items-center">
                     <Link href="/calendario" className="cursor-pointer" onClick={closeSidebar}>📅 Calendario</Link>
                     <Calendar size={16} />

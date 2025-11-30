@@ -139,9 +139,10 @@ const FormAgregarReceta = (props: FormAgregarRecetaProps) => {
       return;
     }
 
-    const tortaSeleccionadaObj = tortas.find(
-      t => t.nombre === tortaSeleccionada || String(t.id_torta) === tortaSeleccionada
-    );
+    const tortaSeleccionadaObj =
+      tortas.find(
+        (t) => t.nombre === tortaSeleccionada || String(t.id_torta) === tortaSeleccionada
+      ) || (recetaSeleccionada ? recetaSeleccionada.torta : undefined);
     if (!tortaSeleccionadaObj) {
       setModalError({ mostrar: true, mensaje: 'La torta seleccionada no es valida.' });
       return;
