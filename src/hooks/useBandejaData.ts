@@ -21,23 +21,29 @@ export const useBandejaData = () => {
 
     const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}) => {
         const token = localStorage.getItem('token');
-        const headers = {
-        'Content-Type': 'application/json',
-        ...options.headers,
-        ...(token && { Authorization: `Bearer ${token}` }),
-        };
+        const isFormData = options.body instanceof FormData;
+
+        const headers = new Headers(options.headers as HeadersInit);
+        if (token) {
+            headers.set('Authorization', `Bearer ${token}`);
+        }
+        if (isFormData) {
+            headers.delete('Content-Type'); // Deja que el navegador setee el boundary del multipart
+        } else if (!headers.has('Content-Type')) {
+            headers.set('Content-Type', 'application/json');
+        }
 
         const response = await fetch(url, { ...options, headers });
 
         if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('token');
-        window.location.href = '/login'; 
-        throw new Error('No autorizado');
+            localStorage.removeItem('token');
+            window.location.href = '/login'; 
+            throw new Error('No autorizado');
         }
 
         if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error ${response.status}: ${errorText}`);
+            const errorText = await response.text();
+            throw new Error(`Error ${response.status}: ${errorText}`);
         }
         
         // Si la respuesta no tiene contenido (ej. en un DELETE), devolvemos un objeto vacío
@@ -191,14 +197,11 @@ export const useBandejaData = () => {
             }
             formData.append('tortas', JSON.stringify(bandejaData.tortas));
 
-            const response = await fetchWithAuth(`${API_BASE_URL}/bandejas`, {
+            const data = await fetchWithAuth(`${API_BASE_URL}/bandejas`, {
                 method: 'POST',
                 body: formData,
                 headers: {} // No Content-Type aquí, FormData lo maneja automáticamente
             });
-            // No necesitamos el JSON de respuesta aquí, solo la confirmación de éxito.
-            // Si la API devuelve algo útil, puedes parsearlo:
-            const data = await response.json();
             console.log("Bandeja agregada con éxito:", data);
 
             // Refrescar las bandejas después de agregar

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Calendar, LayoutDashboard, ShieldCheck, Users } from 'lucide-react';
 import { api } from '@/lib/api';
+import { loadNotificationsCache, saveNotificationsCache } from '@/lib/notificationsCache';
 
 const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password'];
 
@@ -41,36 +42,51 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, [checkAuth]);
 
-  const loadUnreadNotifications = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setUnreadNotifications(0);
-      return;
-    }
+  const loadUnreadNotifications = useCallback(
+    async (options?: { skipFetch?: boolean }) => {
+      const cached = loadNotificationsCache();
+      if (cached) {
+        setUnreadNotifications(cached.unreadCount);
+        if (options?.skipFetch) return;
+      }
 
-    try {
-      const res = await fetch(`${api}/notificaciones?unread=true&pageSize=1`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
+      const token = localStorage.getItem('token');
+      if (!token) {
         setUnreadNotifications(0);
         return;
       }
 
-      const data = await res.json();
-      setUnreadNotifications(Number(data?.unreadCount || 0));
-    } catch {
-      setUnreadNotifications(0);
-    }
-  }, []);
+      if (options?.skipFetch) return;
+
+      try {
+        const res = await fetch(`${api}/notificaciones?unread=true&pageSize=1`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          setUnreadNotifications(cached?.unreadCount ?? 0);
+          return;
+        }
+
+        const data = await res.json();
+        const unread = Number(data?.unreadCount || 0);
+        setUnreadNotifications(unread);
+        // Si el backend devuelve data parcial, preservamos la cache previa
+        const list = Array.isArray(data?.data) ? data.data : cached?.data || [];
+        saveNotificationsCache(list, unread);
+      } catch {
+        setUnreadNotifications(cached?.unreadCount ?? 0);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     loadUnreadNotifications();
 
-    const handleNotificationsUpdate = () => loadUnreadNotifications();
+    const handleNotificationsUpdate = () => loadUnreadNotifications({ skipFetch: true });
     window.addEventListener('notifications-updated', handleNotificationsUpdate);
     window.addEventListener('storage', handleNotificationsUpdate);
 
