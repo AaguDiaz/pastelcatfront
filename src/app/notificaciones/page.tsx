@@ -13,23 +13,13 @@ import {
   Search,
   Square,
 } from 'lucide-react';
-
-type NotificationCategory = 'pedido' | 'evento' | 'sistema';
-
-type NotificationItem = {
-  id: number;
-  title: string;
-  body: string;
-  category: NotificationCategory;
-  trigger_type?: string | null;
-  id_pedido?: number | null;
-  id_evento?: number | null;
-  created_by?: string | null;
-  created_by_name?: string | null;
-  created_at: string;
-  is_read: boolean;
-  read_at?: string | null;
-};
+import { NotificationCategory, NotificationItem } from '@/interfaces/notifications';
+import {
+  loadNotificationsCache,
+  saveNotificationsCache,
+  updateNotificationReadInCache,
+  markAllReadInCache,
+} from '@/lib/notificationsCache';
 
 const categoryStyles: Record<NotificationCategory, string> = {
   pedido: 'bg-pastel-blue/20 text-slate-800 border border-pastel-blue/40',
@@ -56,6 +46,14 @@ export default function Notificaciones() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Precargar desde cache para que la UI tenga datos sin esperar fetch
+  useEffect(() => {
+    const cached = loadNotificationsCache();
+    if (cached) {
+      setNotifications(cached.data);
+    }
+  }, []);
 
   const fetchNotifications = async () => {
     const token = localStorage.getItem('token');
@@ -97,7 +95,11 @@ export default function Notificaciones() {
       }
 
       const data = await res.json();
-      setNotifications(data?.data || []);
+      const items: NotificationItem[] = data?.data || [];
+      setNotifications(items);
+      const unreadCountFromFetch = items.filter((n) => !n.is_read).length;
+      saveNotificationsCache(items, unreadCountFromFetch);
+      window.dispatchEvent(new Event('notifications-updated'));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error desconocido';
       setError(msg);
@@ -134,7 +136,7 @@ export default function Notificaciones() {
           item.id === id ? { ...item, is_read: nextRead, read_at: nextRead ? new Date().toISOString() : null } : item,
         ),
       );
-
+      updateNotificationReadInCache(id, nextRead);
       window.dispatchEvent(new Event('notifications-updated'));
     } catch (err) {
       console.error(err);
@@ -158,7 +160,13 @@ export default function Notificaciones() {
         throw new Error('No se pudieron marcar todas como leidas.');
       }
 
-      setNotifications((prev) => prev.map((item) => ({ ...item, is_read: true, read_at: new Date().toISOString() })));
+      const updated = notifications.map((item) => ({
+        ...item,
+        is_read: true,
+        read_at: new Date().toISOString(),
+      }));
+      setNotifications(updated);
+      markAllReadInCache();
       window.dispatchEvent(new Event('notifications-updated'));
     } catch (err) {
       console.error(err);
